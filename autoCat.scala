@@ -99,8 +99,9 @@ println(cline(0) + ":" + cline(1))
 //System.exit(1)
 }
 
-if (AD != -1 && cline(damPos).size > 3 && cline(sirePos).size > 3 && cline(proPos).size > 3  &&  cline(5).toFloat >= filterQual && getDP(cline(proPos)) <= filterDP
-	&& getDP(cline(proPos)) >= minDP && ( pileupData.contains(s"${cline(0)}:${cline(1)}") || (validAD(cline(proPos)) && validAD(cline(damPos)) &&  validAD(cline(sirePos))))){
+if (AD != -1 && cline(damPos).size > 3 && cline(sirePos).size > 3 && cline(proPos).size > 3  &&  cline(5).toFloat >= filterQual &&
+// getDP(cline(proPos)) <= filterDP && getDP(cline(proPos)) >= minDP && 
+( pileupData.contains(s"${cline(0)}:${cline(1)}") || (validAD(cline(proPos)) && validAD(cline(damPos)) &&  validAD(cline(sirePos))))){
 
 if (isDenovo(cline(damPos),cline(sirePos),cline(proPos))){
 cat9.write(s"${cline(0)}\t${cline(1)}\t${cline(2)}\t${cline(3)}\t${cline(4)}\t${cline(5)}\tPASS\tCAT9;${cline(7)}\t${cline(8)}\t${cline(sirePos)}\t${cline(damPos)}\t${cline(proPos)}\n")
