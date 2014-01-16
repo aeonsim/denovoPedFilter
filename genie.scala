@@ -73,7 +73,7 @@ setFields(cline(8))
 }
 
 //filter GQ & DP
-if ((cline(anPos(sireID)).split(":").apply(GQ).toInt >= GQmin && 
+if ( (GQ == -1 && DP == -1) || (cline(anPos(sireID)).split(":").apply(GQ).toInt >= GQmin && 
 		cline(anPos(damID)).split(":").apply(GQ).toInt >= GQmin && 
 			cline(anPos(proID)).split(":").apply(GQ).toInt >= GQmin) &&
 				(cline(anPos(sireID)).split(":").apply(DP).toInt >= DPmin && 
