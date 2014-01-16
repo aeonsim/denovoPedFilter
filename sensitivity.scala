@@ -112,6 +112,7 @@ animalStats(animal(0)).apply(5) += geno(DP).toInt
 }
 
 }
+
 } //eIf for DP GQ checks
 } else { //Else for VCF ./.
 animalStats(animal(0)).apply(7) += 1 

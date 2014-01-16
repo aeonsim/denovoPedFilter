@@ -24,6 +24,7 @@ def spliterList (field: String): Array[Int] = {
 if (field.contains("min")) field.split("min").apply(1).split(",").map(_.toInt) else field.split("max").apply(1).split(",").map(_.toInt)
 }
 
+
 for (i <- args){
 if (i.contains("vcf")) {
 input = new BufferedReader(new FileReader(args(0)))

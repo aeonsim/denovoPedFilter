@@ -34,4 +34,3 @@ current = input.readLine.split("\t")
 }
 
 out.close
-

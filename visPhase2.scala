@@ -2,6 +2,7 @@ import java.io._
 import net.sf.samtools.util._
 
 
+
 object visPhase2{
 
 def main(args: Array[String]) : Unit = {

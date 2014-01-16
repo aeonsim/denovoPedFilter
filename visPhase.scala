@@ -5,6 +5,7 @@ Label Haplotypes S1/S2 D1/D2
 Maternal/Paternal if from Beagle, Paternal/Maternal if from RTG pop
 */
 
+
 import java.io._
 import scala.collection.mutable.HashMap
 import net.sf.samtools.util._

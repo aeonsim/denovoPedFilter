@@ -32,3 +32,4 @@ println(s"$nuc -> ${working(0)}$b${working(2)} & ${alts(working(2))}${alts(worki
 }
 used += nuc
 }
+

@@ -89,4 +89,3 @@ println("Forward diNucs")
 diNucStats.foreach(s => println(s._1 + "\t" + s._2))
 println("Reverse diNucs")
 revdiNucStats.foreach(s => println(s._1 + "\t" + s._2))
-
