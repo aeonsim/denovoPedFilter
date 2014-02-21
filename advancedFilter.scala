@@ -107,15 +107,15 @@ val errors = System.err
 		} else {
 			val alts = indv(AOval).split(",")
 			if (ROval != -1 && AOval != -1){
-				if (refGT == 0){
-					ref = if (vcfType == "platypus") indv(ROval).split(",")(0).toInt else indv(ROval).toInt
-				} else {
-					ref = if (vcfType == "platypus") indv(ROval).split(",")(refGT - 1).toInt else alts(refGT - 1).toInt
-				}
 				if (altGT == 0){
 					alt = alts(0).toInt
 				} else {
 					alt = alts(altGT - 1).toInt
+				}
+				if (refGT == 0){
+					ref = if (vcfType == "platypus") indv(ROval).split(",")(0).toInt else indv(ROval).toInt
+				} else {
+					ref = if (vcfType == "platypus") (indv(ROval).split(",")(refGT - 1).toInt - alt) else alts(refGT - 1).toInt
 				}
 			}//eif
 		}//eelse
@@ -157,12 +157,13 @@ def main (args: Array[String]): Unit = {
 
 	// Tuple5(Ancestors, Parents, Children, Descendants, TrioDP)
 
-	var trios = new HashMap[String, Tuple5[List[String],List[String],List[String],List[String],Int]]
+	var trios = new HashMap[String, Tuple6[List[String],List[String],List[String],List[String],Int,List[String]]]
 	var vcfanimals = new HashMap[String, Int]
 	var ancestors : List[String] = Nil
 	var parents : List[String] = Nil
 	var children : List[String] = Nil
 	var descendents : List[String] = Nil
+	var population : List[String] = Nil
 	var AD = -1
 	var GT = -1
 	var DP = -1
@@ -208,14 +209,15 @@ def main (args: Array[String]): Unit = {
 		val curPro = in_pro.readLine.split("\t")
 
 		if (pedFile.contains(curPro(0)) && animalIDS.contains(curPro(0))){
-			ancestors = itPed(pedFile,vcfanimals,curPro(0)).tail
 			parents = pedFile(curPro(0))(2) :: pedFile(curPro(0))(3) :: Nil
+			ancestors = itPed(pedFile,vcfanimals,curPro(0)).tail.filterNot(x => parents.contains(x))
 			children = findChildren(pedFile,vcfanimals,curPro(0))
 			for (kid <- children){
 				descendents = findChildren(pedFile,vcfanimals,kid) 
 			}//efor
+			population = animalIDS.toList.filterNot(x => (children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)))
 			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size != 0){
-			trios += curPro(0) -> (ancestors, parents, children, descendents, curPro(1).toInt)
+			trios += curPro(0) -> (ancestors, parents, children, descendents, curPro(1).toInt, population)
 			}
 		}//eif
 	}//ewhile
@@ -228,8 +230,8 @@ def main (args: Array[String]): Unit = {
 
 	for (fam <- trios){
 		println(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}")
-		fam._2._1.foreach(s => print(s + "\t"))
 		print("Grandparents\t")
+		fam._2._1.foreach(s => print(s + "\t"))
 		print(fam._2._1.size + "\n")
 		print("Children\t")		
 		fam._2._3.foreach(s => print(s + "\t"))
@@ -246,7 +248,6 @@ def main (args: Array[String]): Unit = {
 	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tAnces\tPars\tChildren\tDesc\tPop\tPopFreq\tSupport Ratio\tScore\tProband\tSire\tDam\tWarning")
 
 	while (in_vcf.ready){
-		var altsPar = 0
 		var denovo = false
 		var line = in_vcf.readLine().split("\t")
 		val format = line(8).split(":")
@@ -266,6 +267,7 @@ def main (args: Array[String]): Unit = {
 		if (line.size == (vcfanimals.size + 9)){
 
 			for (fam <- trios){
+				var altsPar = 0
 				val ped = fam._2
 				var ances, par, kids, desc, popFreq = 0
 				val maxDP = (ped._5 * 1.7).toInt
@@ -317,7 +319,7 @@ def main (args: Array[String]): Unit = {
 					//print(line(vcfanimals(indv)).split(":").apply(GT) + " " + isVar(line(vcfanimals(indv)).split(":").apply(GT)) + "\t")
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							if (isVar(curAn(GT))|| sigAD(refAlt._2)){
+							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 							}
 						}
@@ -329,7 +331,7 @@ def main (args: Array[String]): Unit = {
 					//print(line(vcfanimals(indv)).split(":").apply(GT) + " " + isVar(line(vcfanimals(indv)).split(":").apply(GT)) + "\t")
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							if (isVar(curAn(GT))|| sigAD(refAlt._2)){
+							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								desc += 1
 							}
 						}
@@ -337,7 +339,7 @@ def main (args: Array[String]): Unit = {
 
 			/* Population Calc */
 
-					for (indv <- animalIDS){
+					for (indv <- ped._6){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -346,6 +348,8 @@ def main (args: Array[String]): Unit = {
 							}
 						}
 					}
+					
+					errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
 
 			/* Check Pedigree segregation pattern */
 
@@ -356,7 +360,7 @@ def main (args: Array[String]): Unit = {
 					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && selROvAD(proBand,AD, RO, AO, GT)._2 >= minALT) || 
 							(selROvAD(proBand,AD, RO, AO, GT)._2 >= (minALT * 3))
 						) 	&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{(kids + desc + 1) == popFreq})
+							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{popFreq > 0})
 					){
 						denovo = true
 						
