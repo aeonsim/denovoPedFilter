@@ -349,7 +349,7 @@ def main (args: Array[String]): Unit = {
 						}
 					}
 					
-					errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
+					//errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
 
 			/* Check Pedigree segregation pattern */
 
