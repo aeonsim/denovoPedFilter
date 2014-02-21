@@ -360,7 +360,7 @@ def main (args: Array[String]): Unit = {
 					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && selROvAD(proBand,AD, RO, AO, GT)._2 >= minALT) || 
 							(selROvAD(proBand,AD, RO, AO, GT)._2 >= (minALT * 3))
 						) 	&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{popFreq > 0})
+							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
 						
