@@ -218,8 +218,10 @@ def main (args: Array[String]): Unit = {
 			parents = pedFile(curPro(0))(2) :: pedFile(curPro(0))(3) :: Nil
 			ancestors = itPed(pedFile,vcfanimals,curPro(0)).tail.filterNot(x => parents.contains(x))
 			children = findChildren(pedFile,vcfanimals,curPro(0))
-			for (kid <- children){
-				descendents = findChildren(pedFile,vcfanimals,kid) 
+			for (indv <- animalIDS.toList.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))){
+				if (itPed(pedFile,vcfanimals,indv).contains(curPro(0)){
+					descendents = indv :: descendents
+				}
 			}//efor
 			population = animalIDS.toList.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)))
 			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size != 0){
