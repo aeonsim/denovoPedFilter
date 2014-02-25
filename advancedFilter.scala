@@ -376,15 +376,14 @@ def main (args: Array[String]): Unit = {
 						case _ => rank = 7
 					}
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
-	
+					val proGT = proBand(GT)
+					
 					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && proRatio._2 >= minALT) || 
 							(proRatio._2 >= (minALT * 3))) 
 								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
 							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
-
-						val proGT = proBand(GT)
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
 							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
