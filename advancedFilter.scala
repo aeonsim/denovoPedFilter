@@ -133,6 +133,11 @@ val errors = System.err
 			false
 		}
 	}
+	
+	def rtGTs(genotype: String) : List[String] = {
+		val gts = if (genotype.size == 3 && genotype.contains('/')) genotype.split('/') else genotype.split('|')
+		gts.toList
+	}
 
 /* Main body of Program */
 
@@ -151,8 +156,9 @@ def main (args: Array[String]): Unit = {
 	val reoccur = if(List("TRUE","YES","Y","T").contains(args(5).toUpperCase)) true else false
 
 	val outname = args(0).split("/")(args(0).split("/").size - 1)
-	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".reoccur-" + reoccur + "-denovos.vcf.gz")))
-
+	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
+	val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
+	
 	var pedFile = new HashMap[String, Array[String]]
 
 	// Tuple5(Ancestors, Parents, Children, Descendants, TrioDP)
@@ -245,7 +251,7 @@ def main (args: Array[String]): Unit = {
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tAnces\tPars\tChildren\tDesc\tPop\tPopFreq\tSupport Ratio\tScore\tProband\tSire\tDam\tWarning")
+	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tAnces\tPars\tChildren\tDesc\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tWarning")
 
 	while (in_vcf.ready){
 		var denovo = false
@@ -301,17 +307,24 @@ def main (args: Array[String]): Unit = {
 
 
 			/* Loop through each family group and record Hets */
-			//Ansc
+					var grands: List[String] = Nil
 					for (indv <- ped._1){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							adratio += rc(refAlt._1,refAlt._2)
-							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
+							adratio += rc(refAlt._1,refAlt._2)						
+							grands = grands ++ rtGTs(curAn(GT))
+							if (sigAD(refAlt._2)){
 								ances += 1
 							}
 						}
-					}//Efor ansc
+					}
+					
+					println(grands + " " + proBand(GT))
+					
+					if (proBand(GT)(0) != '.' && grands.contains(proBand(GT)(0)) && grands.contains(proBand(GT)(1))){
+						ances += 1
+					}
 
 			//Children
 					for (indv <- ped._3){
@@ -356,23 +369,22 @@ def main (args: Array[String]): Unit = {
 			/* -------- Denovo Check ---------- */
 
 					val curPro = line(vcfanimals(fam._1)).split(":")
+					var rank = 0
+					altsPar match {
+						case 0 => rank = 9
+						case 1 => rank = 8
+						case _ => rank = 7
+					}
+					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 	
-					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && selROvAD(proBand,AD, RO, AO, GT)._2 >= minALT) || 
-							(selROvAD(proBand,AD, RO, AO, GT)._2 >= (minALT * 3))
-						) 	&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
+					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && proRatio._2 >= minALT) || 
+							(proRatio._2 >= (minALT * 3))) 
+								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
 							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
-						
-						var rank = 0
-						altsPar match {
-							case 0 => rank = 9
-							case 1 => rank = 8
-							case _ => rank = 7
-						}
 
 						val proGT = proBand(GT)
-						val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
 							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
@@ -381,10 +393,10 @@ def main (args: Array[String]): Unit = {
 							}
 						
 						if (reoccur && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT))
+							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT))
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
 								print ("\t WARNING: Low confidence de novo\n")
@@ -395,6 +407,16 @@ def main (args: Array[String]): Unit = {
 						}//eif reoccur
 
 					} //eif is Denovo
+					
+					
+					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
+						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
+						&& proRatio._2 >= minALT && adratio == 0.0){
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
+							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+						}
+					
+					
 
 				}//eisVAR
 			}//Efor fam <- trios
