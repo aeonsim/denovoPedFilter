@@ -223,9 +223,12 @@ def main (args: Array[String]): Unit = {
 					descendents = indv :: descendents
 				}
 			}//efor
+			var tmpdesc = descendents.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)))
+			
 			population = animalIDS.toList.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)))
+			
 			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size != 0){
-			trios += curPro(0) -> (ancestors, parents, children, descendents, curPro(1).toInt, population)
+				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population)
 			}
 		}//eif
 	}//ewhile
