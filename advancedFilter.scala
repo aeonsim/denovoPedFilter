@@ -320,7 +320,7 @@ def main (args: Array[String]): Unit = {
 						}
 					}
 					
-					println(grands + " " + proBand(GT))
+					//println(grands + " " + proBand(GT))
 					
 					if (proBand(GT)(0) != '.' && grands.contains(proBand(GT)(0)) && grands.contains(proBand(GT)(1))){
 						ances += 1
