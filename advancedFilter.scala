@@ -22,10 +22,9 @@ val errors = System.err
 */
 
 
-
-	def itPed (pop: HashMap[String, Array[String]], vcf: HashMap[String,Int] , rec: String): List[String] = {
-		if (pop.contains(rec) & vcf.contains(rec)){
-			return rec :: itPed(pop,vcf,pop(rec).apply(2)) ::: itPed(pop,vcf,pop(rec).apply(3))
+	def itPed (pop: HashMap[String, Array[String]] , rec: String): List[String] = {
+		if (pop.contains(rec)){
+			return rec :: itPed(pop,pop(rec).apply(2)) ::: itPed(pop,pop(rec).apply(3))
 		} else {
 			return Nil
 		}
@@ -161,14 +160,15 @@ def main (args: Array[String]): Unit = {
 	
 	var pedFile = new HashMap[String, Array[String]]
 
-	// Tuple5(Ancestors, Parents, Children, Descendants, TrioDP)
+	// Tuple6(Ancestors, Parents, Children, Descendants, TrioDP, population, extended-Fam)
 
-	var trios = new HashMap[String, Tuple6[List[String],List[String],List[String],List[String],Int,List[String]]]
+	var trios = new HashMap[String, Tuple7[List[String],List[String],List[String],List[String],Int,List[String],List[String]]]
 	var vcfanimals = new HashMap[String, Int]
 	var ancestors : List[String] = Nil
 	var parents : List[String] = Nil
 	var children : List[String] = Nil
 	var descendents : List[String] = Nil
+	var extFam : List[String] = Nil
 	var population : List[String] = Nil
 	var AD = -1
 	var GT = -1
@@ -183,11 +183,13 @@ def main (args: Array[String]): Unit = {
 	var vcfrec = in_vcf.readLine().split("\t")
 	while (vcfrec(0).apply(1) == '#'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		vcfrec = in_vcf.readLine().split("\t")
 	}
 
 	if (vcfrec(0).apply(0) == '#' && vcfrec(0).apply(1) == 'C'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		for (i <- 9 to (vcfrec.size -1)){
 			vcfanimals += vcfrec(i) -> i
 		}
@@ -214,21 +216,26 @@ def main (args: Array[String]): Unit = {
 	while (in_pro.ready){
 		val curPro = in_pro.readLine.split("\t")
 		descendents = Nil
+		extFam = Nil
 		if (pedFile.contains(curPro(0)) && animalIDS.contains(curPro(0))){
 			parents = pedFile(curPro(0))(2) :: pedFile(curPro(0))(3) :: Nil
-			ancestors = itPed(pedFile,vcfanimals,curPro(0)).tail.filterNot(x => parents.contains(x))
+			ancestors = itPed(pedFile,curPro(0)).tail.filterNot(x => parents.contains(x) || (! vcfanimals.contains(x)))
 			children = findChildren(pedFile,vcfanimals,curPro(0))
 			for (indv <- animalIDS.toList){ //.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))){
-				if (itPed(pedFile,vcfanimals,indv).contains(curPro(0))){
+				val tempPed = itPed(pedFile,indv)
+				if (tempPed.contains(curPro(0))){
 					descendents = indv :: descendents
 				}
+				if (pedFile.contains(indv) && ( pedFile(indv)(2) == parents(0) || pedFile(indv)(3) == parents(0) )  && pedFile(indv)(1) != curPro(0)){
+					extFam = indv :: extFam
+				}
 			}//efor
-			var tmpdesc = descendents.filterNot(x => ((x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))
+			var tmpdesc = descendents.filterNot(x => ((x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)|| (! vcfanimals.contains(x))))
 			
-			population = animalIDS.toList.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)))
+			population = animalIDS.toList.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)|| (! vcfanimals.contains(x))))
 			
 			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size != 0){
-				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population)
+				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 			}
 		}//eif
 	}//ewhile
@@ -250,13 +257,16 @@ def main (args: Array[String]): Unit = {
 		print("Descendents\t")
 		fam._2._4.foreach(s => print(s + "\t"))
 		print(fam._2._4.size + "\n")
+		print("EXFAM\t")
+		fam._2._7.foreach(s => print(s + "\t"))
+		print(fam._2._7.size + "\n")
 	}
 
 /*
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tAnces\tPars\tChildren\tDesc\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tWarning")
+	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tWarning")
 
 	while (in_vcf.ready){
 		var denovo = false
@@ -280,7 +290,7 @@ def main (args: Array[String]): Unit = {
 			for (fam <- trios){
 				var altsPar = 0
 				val ped = fam._2
-				var ances, par, kids, desc, popFreq = 0
+				var ances, par, kids, desc, popFreq, exFamFreq = 0
 				val maxDP = (ped._5 * 1.7).toInt
 				var adratio = 0.0
 				
@@ -309,7 +319,6 @@ def main (args: Array[String]): Unit = {
 							}
 						}
 					}
-
 
 			/* Loop through each family group and record Hets */
 					var grands: List[String] = Nil
@@ -367,6 +376,17 @@ def main (args: Array[String]): Unit = {
 						}
 					}
 					
+			/* Extended family Calc */
+
+					for (indv <- ped._7){
+						if (line(vcfanimals(indv))(0) != '.'){
+							val curAn = line(vcfanimals(indv)).split(":")
+							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
+							if ((isVar(curAn(GT)) || sigAD(refAlt._2)) && checkDP(curAn,DP,minDP,maxDP)){
+								exFamFreq += 1
+							}
+						}
+					}
 					//errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
 
 			/* Check Pedigree segregation pattern */
@@ -397,10 +417,10 @@ def main (args: Array[String]): Unit = {
 							}
 						
 						if (reoccur && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT))
+							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT))
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
 								print ("\t WARNING: Low confidence de novo\n")
@@ -416,7 +436,7 @@ def main (args: Array[String]): Unit = {
 					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + "\t")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
 					
