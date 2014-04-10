@@ -242,6 +242,7 @@ def main (args: Array[String]): Unit = {
 
 	in_pro.close
 
+println("Built Pedigrees")
 //Closed proband file
 
 /* Report identified Trios & there Pedigree Structure*/
@@ -259,7 +260,7 @@ def main (args: Array[String]): Unit = {
 		print(fam._2._4.size + "\n")
 		print("EXFAM\t")
 		fam._2._7.foreach(s => print(s + "\t"))
-		print(fam._2._7.size + "\n")
+		print(fam._2._7.size + "\n\n")
 	}
 
 /*
@@ -375,6 +376,7 @@ def main (args: Array[String]): Unit = {
 								popRef += refAlt._1
 								popALT += refAlt._2
 								val curIndv = pedFile(indv)
+								if (vcfanimals.contains(curIndv(2)) && vcfanimals.contains(curIndv(3))){
 								val sire = line(vcfanimals(curIndv(2))).split(":") 
 								val dam = line(vcfanimals(curIndv(3))).split(":")
 								if (sire(0).apply(0) != '.' && dam(0).apply(0) != '.'){
@@ -384,7 +386,10 @@ def main (args: Array[String]): Unit = {
 								} else {
 									popFreq += 1
 								}
-							}
+							} else {
+									popFreq += 1
+								}
+							}	
 						}
 					}
 					
@@ -429,7 +434,7 @@ def main (args: Array[String]): Unit = {
 							}
 						
 						if (reoccur && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + s"${popRef}\t${popALT}\t")
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + s"\t${popRef}\t${popALT}\t")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
 							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + s"\t${popRef}\t${popALT}")
@@ -448,7 +453,7 @@ def main (args: Array[String]): Unit = {
 					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + s"${popRef}\t${popALT}\t")
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t${proGT}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" + proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + "\t" + selROvAD(par2,AD, RO, AO, GT) + s"\t${popRef}\t${popALT}\t")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
 					
