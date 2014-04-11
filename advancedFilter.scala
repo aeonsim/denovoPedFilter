@@ -312,7 +312,9 @@ println("Built Pedigrees")
 			vcfType = "platypus"
 		}
 		
-		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL)){
+		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
+		
+		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size > 3)){
 
 			for (fam <- trios){
 				var altsPar = 0
