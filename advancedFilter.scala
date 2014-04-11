@@ -142,17 +142,33 @@ val errors = System.err
 
 def main (args: Array[String]): Unit = {
 
-	if (args.size <= 2) {
-		println("advFilter input.vcf.gz input.ped input_probands.txt minDP minALT reoccurring?\n")
+	var settings = HashMap[String,String]
+	
+	for (items <- args){
+		val keyVal = items.toUpperCase.split("=")
+		settings += keyVal[0] -> keyVal[1] 
+	}
+	
+
+	if ((! settings.contains(VCF)) & (! settings.contains(PED)) & (! settings.contains(TRIOS))) {
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 }\n")
+		println("Trios = txtfile per line: AnimalID\tavgDepth")
+		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
 	}
 
-	val in_vcf = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(args(0)))))
-	val in_ped = new BufferedReader(new FileReader(args(1)))
-	val in_pro = new BufferedReader(new FileReader(args(2)))
-	val minDP = args(3).toInt
-	val minALT = args(4).toInt
-	val reoccur = if(List("TRUE","YES","Y","T").contains(args(5).toUpperCase)) true else false
+	val in_vcf = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(settings("VCF")))))
+	val in_ped = new BufferedReader(new FileReader(settings("PED")))
+	val in_pro = new BufferedReader(new FileReader(settings("TRIOS")))
+	
+	
+	/* Default settings*/
+	val minDP = if (settings.contains("MINDP")) settings("MINDP").toInt else 0
+	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
+	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR"))) true else false
+	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
+	val PLGLS = if (settings.contains("PLGL")) settings("PLGL").split(",") else Array(0,0,0)
+	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 
 	val outname = args(0).split("/")(args(0).split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
@@ -175,6 +191,9 @@ def main (args: Array[String]): Unit = {
 	var DP = -1
 	var RO = -1
 	var AO = -1
+	var PL
+	var PLexist = false
+	
 
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
@@ -186,6 +205,9 @@ def main (args: Array[String]): Unit = {
 		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		vcfrec = in_vcf.readLine().split("\t")
 	}
+
+	out_vcf.write(s"##${args.reduceLeft{(a,b) => a + " " + b}}\n")
+	out_somatic.write(s"##${args.reduceLeft{(a,b) => a + " " + b}}\n")
 
 	if (vcfrec(0).apply(0) == '#' && vcfrec(0).apply(1) == 'C'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
@@ -273,6 +295,9 @@ println("Built Pedigrees")
 		var denovo = false
 		var line = in_vcf.readLine().split("\t")
 		val format = line(8).split(":")
+		if (format.contains("PL") || format.contains("GL")){
+			PL = if (format.contains("PL")) format.indexOf("PL") else format.indexOf("GL")
+		}
 		AD = format.indexOf("AD")
 		GT = format.indexOf("GT")
 		DP = format.indexOf("DP")
@@ -423,7 +448,7 @@ println("Built Pedigrees")
 					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && proRatio._2 >= minALT) || 
 							(proRatio._2 >= (minALT * 3))) 
 								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= 1) &&  (if (reoccur){true}else{popFreq == 0})
+							(ances == 0) && (par == 0) && (kids >= minKids) && (line(5).toFloat >= QUAL) &&  (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
 						
