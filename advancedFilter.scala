@@ -439,12 +439,13 @@ println("Built Pedigrees")
 			/* -------- Denovo Check ---------- */
 
 					val curPro = line(vcfanimals(fam._1)).split(":")
-					var rank = 0
+					var rank = ""
 					altsPar match {
-						case 0 => rank = 9
-						case 1 => rank = 8
-						case _ => rank = 7
+						case 0 => rank = "probable"
+						case 1 => rank = "possible"
+						case _ => rank = "unlikely"
 					}
+					
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
 					
