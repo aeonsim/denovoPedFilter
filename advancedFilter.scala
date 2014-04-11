@@ -145,13 +145,13 @@ def main (args: Array[String]): Unit = {
 	var settings = new HashMap[String,String]
 	
 	for (items <- args){
-		val keyVal = items.toUpperCase.split("=")
-		settings += keyVal(0) -> keyVal(1) 
+		val keyVal = items.split("=")
+		settings += keyVal(0).toUpperCase -> keyVal(1) 
 	}
 	
 
 	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 }\n")
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
