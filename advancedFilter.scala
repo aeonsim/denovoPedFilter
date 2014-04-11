@@ -146,7 +146,7 @@ def main (args: Array[String]): Unit = {
 	
 	for (items <- args){
 		val keyVal = items.toUpperCase.split("=")
-		settings += keyVal[0] -> keyVal[1] 
+		settings += keyVal(0) -> keyVal(1) 
 	}
 	
 
@@ -191,7 +191,7 @@ def main (args: Array[String]): Unit = {
 	var DP = -1
 	var RO = -1
 	var AO = -1
-	var PL
+	var PL = -1
 	var PLexist = false
 	
 
