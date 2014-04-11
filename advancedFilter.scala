@@ -142,7 +142,7 @@ val errors = System.err
 
 def main (args: Array[String]): Unit = {
 
-	var settings = HashMap[String,String]
+	var settings = new HashMap[String,String]
 	
 	for (items <- args){
 		val keyVal = items.toUpperCase.split("=")
