@@ -310,7 +310,7 @@ println("Built Pedigrees")
 			DP = format.indexOf("NR")
 			vcfType = "platypus"
 		}
-		println(line(5).toFloat + " " + QUAL + " " + (line(5).toFloat >= QUAL))
+		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL)){
 
 			for (fam <- trios){
@@ -487,7 +487,7 @@ println("Built Pedigrees")
 				}//eisVAR
 			}//Efor fam <- trios
 		} else {
-			println(s"Error ${line(0)} ${line(1)} ${line.size}")
+			//println(s"Error ${line(0)} ${line(1)} ${line.size}")
 	} //else
 
 	}// Ewhile
