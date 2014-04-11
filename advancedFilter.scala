@@ -150,7 +150,7 @@ def main (args: Array[String]): Unit = {
 	}
 	
 
-	if ((! settings.contains(VCF)) & (! settings.contains(PED)) & (! settings.contains(TRIOS))) {
+	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS"))) {
 		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 }\n")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
