@@ -310,8 +310,8 @@ println("Built Pedigrees")
 			DP = format.indexOf("NR")
 			vcfType = "platypus"
 		}
-
-		if (line.size == (vcfanimals.size + 9)){
+		println(line(5).toFloat + " " + QUAL + " " + (line(5).toFloat >= QUAL))
+		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL)){
 
 			for (fam <- trios){
 				var altsPar = 0
@@ -448,7 +448,7 @@ println("Built Pedigrees")
 					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && proRatio._2 >= minALT) || 
 							(proRatio._2 >= (minALT * 3))) 
 								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= minKids) && (line(5).toFloat >= QUAL) &&  (if (reoccur){true}else{popFreq == 0})
+							(ances == 0) && (par == 0) && (kids >= minKids) &&  (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
 						
