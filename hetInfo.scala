@@ -45,8 +45,8 @@ val ALT = details(format.indexOf("NA")).toInt
 //val DTH = details("DP")
 
 val trueGT = truthAnimals(line(0) + ":" + line(1))(0)
-
-if(trueGT == "0/1" || GT == "1/0"){
+print(trueGT + "\t")
+if(trueGT == "0/1" || trueGT == "1/0"){
 println(s"${line(3)}\t${REF}\t${line(4)}\t${ALT}\t${ALT/REF.toFloat}\t${GT}")
 
 } else {
