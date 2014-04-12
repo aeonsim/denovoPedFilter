@@ -42,8 +42,9 @@ if (line(4).size == 1){
 val details = line(testLoc).split(":")
 val format = line(8).split(":")
 val GT = details(format.indexOf("GT"))
-val REF = details(format.indexOf("NR")).toInt
 val ALT = details(format.indexOf("NV")).toInt
+val REF = details(format.indexOf("NR")).toInt - ALT
+
 //val DTH = details("DP")
 
 val trueGT = truthAnimals(line(0) + ":" + line(1))(0)
