@@ -17,7 +17,8 @@ val in_truth = new BufferedReader(new InputStreamReader(new BlockCompressedInput
 val animalID = "23934418"
 var truthAnimals = new HashMap[String,Array[String]]
 var line = in_truth.readLine.split("\t")
-var AANum, AADepth, CCNum, CCDepth, GGNum, GGDepth, TTNum, TTDepth = 0
+var AANum, AADepth, CCNum, CCDepth, GGNum, GGDepth, TTNum, TTDepth, error = 0
+var rAANum, rAADepth, rCCNum, rCCDepth, rGGNum, rGGDepth, rTTNum, rTTDepth = 0
 
 while (line.size < 7) line = in_truth.readLine.split("\t")
 
@@ -47,7 +48,7 @@ val ALT = details(format.indexOf("NV")).toInt
 val trueGT = truthAnimals(line(0) + ":" + line(1))(0)
 print(trueGT + "\t")
 if(trueGT == "0/1" || trueGT == "1/0"){
-println(s"${line(3)}\t${REF}\t${line(4)}\t${ALT}\t${ALT/REF.toFloat}\t${GT}")
+println(s"${line(3)}\t${REF}\t${line(4)}\t${ALT}\t${ALT/REF.toFloat}\t${ALT + REF}\t${GT}")
 
 } else {
 if (trueGT == "1/1"){
@@ -56,15 +57,17 @@ case "A" => AANum += 1; AADepth += ALT;
 case "C" => CCNum += 1; CCDepth += ALT;
 case "G" => GGNum += 1; GGDepth += ALT;
 case "T" => TTNum += 1; TTDepth += ALT;
+case _ => error += 1
 }
 
 } else {
 if (trueGT == "0/0"){
 line(3) match {
-case "A" => AANum += 1; AADepth += REF;
-case "C" => CCNum += 1; CCDepth += REF;
-case "G" => GGNum += 1; GGDepth += REF;
-case "T" => TTNum += 1; TTDepth += REF;
+case "A" => rAANum += 1; rAADepth += REF;
+case "C" => rCCNum += 1; rCCDepth += REF;
+case "G" => rGGNum += 1; rGGDepth += REF;
+case "T" => rTTNum += 1; rTTDepth += REF;
+case _ => error += 1
 }
 
 }
@@ -73,8 +76,12 @@ case "T" => TTNum += 1; TTDepth += REF;
 }
 
 }
-
-
+println(s"REFs\tNUM\avgDEPTH\tALTs\tNUM\tavgDEPTH")
+println(s"AA\t${rAANum}\t${rAADepth/rAANum}\t${AANum}\t${AADepth/AANum}")
+println(s"AA\t${rCCNum}\t${rCCDepth/rCCNum}\t${CCNum}\t${CCDepth/CCNum}")
+println(s"AA\t${rGGNum}\t${rGGDepth/rGGNum}\t${GGNum}\t${GGDepth/GGNum}")
+println(s"AA\t${rTTNum}\t${rTTDepth/rTTNum}\t${TTNum}\t${TTDepth/TTNum}")
+println(s"Errors\t${error}")
 }
 
 
