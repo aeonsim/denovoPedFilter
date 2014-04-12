@@ -6,15 +6,15 @@ import scala.collection.mutable.HashMap
 
 def main (args: Array[String]) : Unit = {
 
-if (args.size != 2){
-println("hetInfo test.vcf.gz truth.vcf.gz")
+if (args.size != 3){
+println("hetInfo test.vcf.gz truth.vcf.gz SAMPLEID")
 System.exit(1)
 }
 
 val in_test = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(args(0)))))
 val in_truth = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(args(1)))))
 
-val animalID = "23934418"
+val animalID = args(3)
 var truthAnimals = new HashMap[String,Array[String]]
 var line = in_truth.readLine.split("\t")
 var AANum, AADepth, CCNum, CCDepth, GGNum, GGDepth, TTNum, TTDepth, error = 0
@@ -79,9 +79,9 @@ case _ => error += 1
 }
 println(s"REFs\tNUM\tavgDEPTH\tALTs\tNUM\tavgDEPTH")
 println(s"AA\t${rAANum}\t${rAADepth/rAANum}\t${AANum}\t${AADepth/AANum}")
-println(s"AA\t${rCCNum}\t${rCCDepth/rCCNum}\t${CCNum}\t${CCDepth/CCNum}")
-println(s"AA\t${rGGNum}\t${rGGDepth/rGGNum}\t${GGNum}\t${GGDepth/GGNum}")
-println(s"AA\t${rTTNum}\t${rTTDepth/rTTNum}\t${TTNum}\t${TTDepth/TTNum}")
+println(s"CC\t${rCCNum}\t${rCCDepth/rCCNum}\t${CCNum}\t${CCDepth/CCNum}")
+println(s"GG\t${rGGNum}\t${rGGDepth/rGGNum}\t${GGNum}\t${GGDepth/GGNum}")
+println(s"TT\t${rTTNum}\t${rTTDepth/rTTNum}\t${TTNum}\t${TTDepth/TTNum}")
 println(s"Errors\t${error}")
 }
 
