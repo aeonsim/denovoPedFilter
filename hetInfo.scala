@@ -77,7 +77,7 @@ case _ => error += 1
 }
 }
 }
-println(s"REFs\tNUM\avgDEPTH\tALTs\tNUM\tavgDEPTH")
+println(s"REFs\tNUM\tavgDEPTH\tALTs\tNUM\tavgDEPTH")
 println(s"AA\t${rAANum}\t${rAADepth/rAANum}\t${AANum}\t${AADepth/AANum}")
 println(s"AA\t${rCCNum}\t${rCCDepth/rCCNum}\t${CCNum}\t${CCDepth/CCNum}")
 println(s"AA\t${rGGNum}\t${rGGDepth/rGGNum}\t${GGNum}\t${GGDepth/GGNum}")
