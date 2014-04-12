@@ -14,7 +14,7 @@ System.exit(1)
 val in_test = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(args(0)))))
 val in_truth = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(args(1)))))
 
-val animalID = args(3)
+val animalID = args(2)
 var truthAnimals = new HashMap[String,Array[String]]
 var line = in_truth.readLine.split("\t")
 var AANum, AADepth, CCNum, CCDepth, GGNum, GGDepth, TTNum, TTDepth, error = 0
