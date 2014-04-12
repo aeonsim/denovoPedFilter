@@ -38,6 +38,7 @@ val testLoc = line.indexOf(animalID)
 
 while (in_test.ready){
 line = in_test.readLine.split("\t")
+if (line(4).size == 1){
 val details = line(testLoc).split(":")
 val format = line(8).split(":")
 val GT = details(format.indexOf("GT"))
@@ -46,9 +47,8 @@ val ALT = details(format.indexOf("NV")).toInt
 //val DTH = details("DP")
 
 val trueGT = truthAnimals(line(0) + ":" + line(1))(0)
-print(trueGT + "\t")
 if(trueGT == "0/1" || trueGT == "1/0"){
-println(s"${line(3)}\t${REF}\t${line(4)}\t${ALT}\t${ALT/REF.toFloat}\t${ALT + REF}\t${GT}")
+println(s"${trueGT}\t${line(3)}\t${REF}\t${line(4)}\t${ALT}\t${ALT/REF.toFloat}\t${ALT + REF}\t${GT}")
 
 } else {
 if (trueGT == "1/1"){
@@ -74,7 +74,7 @@ case _ => error += 1
 }
 
 }
-
+}
 }
 println(s"REFs\tNUM\avgDEPTH\tALTs\tNUM\tavgDEPTH")
 println(s"AA\t${rAANum}\t${rAADepth/rAANum}\t${AANum}\t${AADepth/AANum}")
