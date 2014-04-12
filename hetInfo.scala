@@ -38,9 +38,10 @@ val testLoc = line.indexOf(animalID)
 while (in_test.ready){
 line = in_test.readLine.split("\t")
 val details = line(testLoc).split(":")
-val GT = details("GT")
-val REF = details("NR").toInt
-val ALT = details("NA").toInt
+val format = line(8).split(":")
+val GT = details(format.indexOf("GT"))
+val REF = details(format.indexOf("NR")).toInt
+val ALT = details(format.indexOf("NA")).toInt
 //val DTH = details("DP")
 
 val trueGT = truthAnimals(line(0) + ":" + line(1))(0)
