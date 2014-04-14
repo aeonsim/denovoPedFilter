@@ -151,7 +151,7 @@ def main (args: Array[String]): Unit = {
 	
 
 	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 }")
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 minRAFQ=0.2}")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -169,8 +169,9 @@ def main (args: Array[String]): Unit = {
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
 	val PLGLS = if (settings.contains("PLGL")) settings("PLGL").split(",") else Array(0,0,0)
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
+	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toInt else 0.2
 
-	val outname = args(0).split("/")(args(0).split("/").size - 1)
+	val outname = settings("VCF").split("/")(settings("VCF").split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
 	val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
 	
@@ -452,7 +453,7 @@ println("Built Pedigrees")
 					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && proRatio._2 >= minALT) || 
 							(proRatio._2 >= (minALT * 3))) 
 								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= minKids) &&  (if (reoccur){true}else{popFreq == 0})
+							(ances == 0) && (par == 0) && (kids >= minKids) && ( (proRatio._1/proRatio._2.toFloat) >= minRAFreq) && (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
 						
