@@ -134,7 +134,7 @@ val errors = System.err
 /* Take a Genotype String and check against DP limits*/
 
 	def checkDP (genos: Array[String], DPpos: Int, minDP: Int, maxDP: Int): Boolean = {
-		if (genos.size >= 2 && DPpos != -1){
+		if (genos.size >= 2 && DPpos != -1 && genos(DPpos) != "."){
 			val curDP = if (vcfType == "platypus") genos(DPpos).split(",")(0).toInt else genos(DPpos).toInt
 			if (curDP >= minDP && curDP <= maxDP) true
 			else false
