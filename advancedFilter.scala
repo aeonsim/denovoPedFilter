@@ -505,14 +505,14 @@ try {
 
 				}//eisVAR
 				} catch {
-					case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + " " + fam)
+					case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + " " + fam._1) ; e.printStackTrace()
 				}
 			}//Efor fam <- trios
 		} else {
 			//println(s"Error ${line(0)} ${line(1)} ${line.size}")
 	} //else
 } catch {
- 	case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + e)
+ 	case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + e); e.printStackTrace()
 }
 
 	}// Ewhile
