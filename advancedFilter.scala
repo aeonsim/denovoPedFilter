@@ -93,6 +93,7 @@ val errors = System.err
 		var alt = -1
 		var ref = -1
 		val gtsplit = if (indv(GTval).contains('/')) indv(GTval).split('/') else indv(GTval).split('|')
+		if (gtsplit(0) != "." || indv.size >= 3){
 		var refGT = gtsplit(0).toInt
 		var altGT = gtsplit(1).toInt // initial work to deal with multiple alleles ie GT = 2/3
 		if (ADval != -1){
@@ -123,6 +124,10 @@ val errors = System.err
 				}
 			}//eif
 		}//eelse
+		} else {
+				ref = 1
+				alt = 1000000
+		}
 			(ref,alt)
 	}
 
