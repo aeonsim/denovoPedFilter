@@ -314,7 +314,7 @@ println("Built Pedigrees")
 		}
 		
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
-		
+try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 
 			for (fam <- trios){
@@ -499,7 +499,9 @@ println("Built Pedigrees")
 	} //else
 
 	}// Ewhile
-
+} catch {
+ 	case e: Exception  => println(line.reduceLeft{(a,b) => a + "\t" + b})
+}
 	in_vcf.close
 	out_vcf.close
 }//eMain
