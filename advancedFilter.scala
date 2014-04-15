@@ -169,7 +169,7 @@ def main (args: Array[String]): Unit = {
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
 	val PLGLS = if (settings.contains("PLGL")) settings("PLGL").split(",") else Array(0,0,0)
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
-	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toInt else 0.2
+	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
 
 	val outname = settings("VCF").split("/")(settings("VCF").split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
