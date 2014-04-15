@@ -96,12 +96,17 @@ val errors = System.err
 		var refGT = gtsplit(0).toInt
 		var altGT = gtsplit(1).toInt // initial work to deal with multiple alleles ie GT = 2/3
 		if (ADval != -1){
-			ref = indv(ADval).split(",")(refGT).toInt
-			if (altGT == 0) {
-				alt = indv(ADval).split(",")(altGT + 1).toInt
+			if (indv(ADval) != "."){
+				ref = indv(ADval).split(",")(refGT).toInt
+				if (altGT == 0) {
+					alt = indv(ADval).split(",")(altGT + 1).toInt
+					}
+				else {
+					alt = indv(ADval).split(",")(altGT).toInt
 				}
-			else {
-				alt = indv(ADval).split(",")(altGT).toInt
+			} else {
+				ref = 1
+				alt = 1000000
 			}
 		} else {
 			val alts = indv(AOval).split(",")
