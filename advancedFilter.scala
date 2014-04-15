@@ -318,6 +318,7 @@ try {
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 
 			for (fam <- trios){
+	try {
 				var altsPar = 0
 				val ped = fam._2
 				var ances, par, kids, desc, popFreq, exFamFreq = 0
@@ -493,15 +494,18 @@ try {
 					
 
 				}//eisVAR
+				} catch {
+					case e: Exception  => println(line.reduceLeft{(a,b) => a + "\t" + b} + " " + fam)
+				}
 			}//Efor fam <- trios
 		} else {
 			//println(s"Error ${line(0)} ${line(1)} ${line.size}")
 	} //else
+} catch {
+ 	case e: Exception  => println(line.reduceLeft{(a,b) => a + "\t" + b} + e)
+}
 
 	}// Ewhile
-} catch {
- 	case e: Exception  => println(line.reduceLeft{(a,b) => a + "\t" + b})
-}
 	in_vcf.close
 	out_vcf.close
 }//eMain
