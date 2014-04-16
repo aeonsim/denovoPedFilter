@@ -16,6 +16,8 @@ import scala.collection.mutable.HashMap
 /* Global Var for VCF Type*/
 var vcfType = ""
 val errors = System.err
+var PLexist = false
+var PL = -1
 
 /* Recursive function to find all parents & ancestors of nominated individual
 * returns list of those present in both the PED & VCF files.
@@ -155,7 +157,12 @@ val errors = System.err
 			val GT = rtGTs(indv(GTval)).sorted
 			(RefAlt(GT(0).toInt).toInt,RefAlt(GT(1).toInt).toInt)
 		} else {
+		if (PLexist){
+			//Check other Genotypes are atleast Phred 10 unlikely
+			if (indv(PL).split(",").sorted.tail.forall(_ > 10)) (1,0) else (1,-1)
+		}else {
 			(1,-1)
+			}
 		}
 	}
 	
@@ -279,8 +286,7 @@ def main (args: Array[String]): Unit = {
 	var DP = -1
 	var RO = -1
 	var AO = -1
-	var PL = -1
-	var PLexist = false
+	
 	
 
 /*
@@ -380,6 +386,8 @@ println("Built Pedigrees")
 	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning")
 
 	while (in_vcf.ready){
+		PL = -1
+		PLexist = false
 		var denovo = false
 		val formatDetails = new HashMap[String,Int]
 		var line = in_vcf.readLine().split("\t")
@@ -434,7 +442,7 @@ try {
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							altsPar += refAlt._2
-							if (refAlt._2 != -1 ) adratio = rc(refAlt._1,refAlt._2) else println("No AD? " + line(vcfanimals(indv)))
+							if (refAlt._2 != -1 ) adratio = rc(refAlt._1,refAlt._2)
 							if (sigAD(refAlt._2)){
 								par += 1
 							}
@@ -447,7 +455,7 @@ try {
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							if (refAlt._2 != -1 ) adratio = rc(refAlt._1,refAlt._2) else println("No AD? " + line(vcfanimals(indv)))
+							if (refAlt._2 != -1 ) adratio = rc(refAlt._1,refAlt._2) 
 							grands = grands ++ rtGTs(curAn(GT))
 							if (sigAD(refAlt._2)){
 								ances += 1
@@ -587,14 +595,14 @@ try {
 					} //eif is Denovo
 					
 					
-/*					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
+					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
 							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" +
 							 proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
-*/					
+					
 					
 
 				}//eisVAR
