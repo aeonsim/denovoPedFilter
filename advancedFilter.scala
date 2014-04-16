@@ -88,7 +88,7 @@ val errors = System.err
 	}
 
 /* Extract the correct Read counts from AD or RO/AO AD format is REF,ALT,ALT2,... */
-
+/*
 	def selROvAD(indv: Array[String], ADval: Int, ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
 		var alt = -1
 		var ref = -1
@@ -129,18 +129,86 @@ val errors = System.err
 				alt = 1000000
 		}
 			(ref,alt)
+	}*/
+	
+	/* Return Genotypes as List*/
+	
+	def rtGTs(genotype: String) : List[String] = {
+		val gts = if (genotype.size == 3 && genotype.contains('/')) genotype.split('/') else genotype.split('|')
+		gts.toList
+	}
+
+	def selROvAD(indv: Array[String], ADval: Int, ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
+		var refAlt = (1,-1)
+		vcfType match {
+			case "gatk" => refAlt = gatkAD(indv,ADval,GTval)
+			case "platypus" => refAlt = platypusRefAlt(indv,ROval, AOval, GTval)
+			case "freebayes" => refAlt = fbRefAlt(indv,ROval, AOval, GTval)
+			case _ => error.println("Unknown VCF type"); System.exit(1)
+		}
+		refAlt
 	}
 
 	def gatkAD(indv: Array[String], ADval: Int, GTval: Int): Tuple2[Int,Int] = {
-		val RefAlt = indv(ADval).split(",")
-		val GT = rtGTs(indv(GTval)).sorted
-		val refPos = if (GT)
+		if (indv.size > ADval && indv(ADval) != "."){
+			val RefAlt = indv(ADval).split(",")
+			val GT = rtGTs(indv(GTval)).sorted
+			(RefAlt(GT(0)).toInt,RefAlt(GT(1)).toInt)
+		} else {
+			(1,-1)
+		}
 	}
 	
-	def selROvAD2(indv: Array[String], GTval: Int, vcfCaller : String): Tuple2[Int,Int] = {
+	def platypusRefAlt(indv: Array[String], ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
+		var alt = -1
+		var ref = 1
 		
+		if (indv.size > AOval){
+			val GT = rtGTs(indv(GTval)).sorted
+			var refGT = GT(0).toInt
+			var altGT = GT(1).toInt
+			val alts = indv(AOval).split(",")
+			if (ROval != -1 && AOval != -1){
+				if (altGT == 0){
+					alt = alts(0).toInt
+				} else {
+					alt = alts(altGT - 1).toInt
+				}
+				if (refGT == 0){
+					ref =  indv(ROval).split(",")(0).toInt - alt
+				} else {
+					ref = (indv(ROval).split(",")(refGT - 1).toInt - alt) 
+				}
+			}
+		}
+		(ref,alt)
 	}
 
+	def fbRefAlt(indv: Array[String], ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
+		var alt = -1
+		var ref = 1
+		
+		if (indv.size > AOval){
+			val GT = rtGTs(indv(GTval)).sorted
+			var refGT = GT(0).toInt
+			var altGT = GT(1).toInt
+			val alts = indv(AOval).split(",")
+			if (ROval != -1 && AOval != -1){
+				if (altGT == 0){
+					alt = alts(0).toInt
+				} else {
+					alt = alts(altGT - 1).toInt
+				}
+				if (refGT == 0){
+					ref =  indv(ROval).toInt
+				} else {
+					ref = alts(refGT - 1).toInt
+				}
+			}
+
+		} 
+		(ref,alt)
+	}
 
 
 
@@ -156,10 +224,6 @@ val errors = System.err
 		}
 	}
 	
-	def rtGTs(genotype: String) : List[String] = {
-		val gts = if (genotype.size == 3 && genotype.contains('/')) genotype.split('/') else genotype.split('|')
-		gts.toList
-	}
 
 /* Main body of Program */
 
@@ -317,34 +381,27 @@ println("Built Pedigrees")
 
 	while (in_vcf.ready){
 		var denovo = false
+		val formatDetails = Map(String,Int)
 		var line = in_vcf.readLine().split("\t")
 		val format = line(8).split(":")
 		if (format.contains("PL") || format.contains("GL")){
 			PL = if (format.contains("PL")) format.indexOf("PL") else format.indexOf("GL")
 			PLexist = true
 		}
+		
+		
 		AD = format.indexOf("AD")
 		GT = format.indexOf("GT")
 		DP = format.indexOf("DP")
-		AO = format.indexOf("AO")
-		RO = format.indexOf("RO")
+		AO = if (format.contains("NV")) format.indexOf("NV") else format.indexOf("AO")
+		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
 		
 		format match{
 			case n if n.contains("DP") => vcfType = "gatk"
-			case n if n.contains("NR") => vcfType = "plat"
-			case n if n.contains("RO") => vcfType = "freeb"
-			case _ => vcfType = "unknown"
+			case n if n.contains("NR") => vcfType = "platypus"
+			case n if n.contains("RO") => vcfType = "freebayes"
+			case _ => vcfType = error.println("unknown VCF type"); System.exit(1)
 		}
-		
-		
-		/*
-		if (format.contains("NV")){
-			AO = format.indexOf("NV")
-			RO = format.indexOf("NR")
-			DP = format.indexOf("NR")
-			vcfType = "platypus"
-		}
-		*/
 		
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
 try {		
@@ -484,10 +541,10 @@ try {
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
 					
-					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && proRatio._2 >= minALT) || 
+					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (proRatio._2 >= minALT || proRatio._2 == -1) || 
 							(proRatio._2 >= (minALT * 3))) 
 								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= minKids) && ( (proRatio._1/proRatio._2.toFloat) >= minRAFreq) && (if (reoccur){true}else{popFreq == 0})
+							(ances == 0) && (par == 0) && (kids >= minKids) && ( (proRatio._2/proRatio._1.toFloat) >= minRAFreq) && (if (reoccur){true}else{popFreq == 0})
 					){
 						denovo = true
 						
