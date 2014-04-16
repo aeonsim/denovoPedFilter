@@ -144,7 +144,7 @@ val errors = System.err
 			case "gatk" => refAlt = gatkAD(indv,ADval,GTval)
 			case "platypus" => refAlt = platypusRefAlt(indv,ROval, AOval, GTval)
 			case "freebayes" => refAlt = fbRefAlt(indv,ROval, AOval, GTval)
-			case _ => error.println("Unknown VCF type"); System.exit(1)
+			case _ => println("\n\n\nUnknown VCF type in SelROvAD"); System.exit(1)
 		}
 		refAlt
 	}
@@ -153,7 +153,7 @@ val errors = System.err
 		if (indv.size > ADval && indv(ADval) != "."){
 			val RefAlt = indv(ADval).split(",")
 			val GT = rtGTs(indv(GTval)).sorted
-			(RefAlt(GT(0)).toInt,RefAlt(GT(1)).toInt)
+			(RefAlt(GT(0).toInt).toInt,RefAlt(GT(1).toInt).toInt)
 		} else {
 			(1,-1)
 		}
@@ -381,7 +381,7 @@ println("Built Pedigrees")
 
 	while (in_vcf.ready){
 		var denovo = false
-		val formatDetails = Map(String,Int)
+		val formatDetails = new HashMap[String,Int]
 		var line = in_vcf.readLine().split("\t")
 		val format = line(8).split(":")
 		if (format.contains("PL") || format.contains("GL")){
@@ -400,7 +400,7 @@ println("Built Pedigrees")
 			case n if n.contains("DP") => vcfType = "gatk"
 			case n if n.contains("NR") => vcfType = "platypus"
 			case n if n.contains("RO") => vcfType = "freebayes"
-			case _ => vcfType = error.println("unknown VCF type"); System.exit(1)
+			case _ => println("\n\nunknown VCF type"); System.exit(1)
 		}
 		
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
@@ -541,11 +541,25 @@ try {
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
 					
-					if (((!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (proRatio._2 >= minALT || proRatio._2 == -1) || 
-							(proRatio._2 >= (minALT * 3))) 
-								&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-							(ances == 0) && (par == 0) && (kids >= minKids) && ( (proRatio._2/proRatio._1.toFloat) >= minRAFreq) && (if (reoccur){true}else{popFreq == 0})
-					){
+					if (
+							(
+								(
+									!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)
+								) && 	(
+										proRatio._2 >= minALT || proRatio._2 == -1) || 
+											
+												proRatio._2 >= (minALT * 3)
+											)
+										) 
+											&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
+											(ances == 0) && (par == 0) && (kids >= minKids) && 
+											(
+											 	(proRatio._2/proRatio._1.toFloat) >= minRAFreq
+											 ) && 
+											 (
+											 	if (reoccur){true}else{popFreq == 0}
+											 )
+							){
 						denovo = true
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
@@ -573,14 +587,14 @@ try {
 					} //eif is Denovo
 					
 					
-					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
+/*					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
 							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" +
 							 proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
-					
+*/					
 					
 
 				}//eisVAR
