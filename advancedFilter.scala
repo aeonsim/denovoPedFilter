@@ -131,6 +131,19 @@ val errors = System.err
 			(ref,alt)
 	}
 
+	def gatkAD(indv: Array[String], ADval: Int, GTval: Int): Tuple2[Int,Int] = {
+		val RefAlt = indv(ADval).split(",")
+		val GT = rtGTs(indv(GTval)).sorted
+		val refPos = if (GT)
+	}
+	
+	def selROvAD2(indv: Array[String], GTval: Int, vcfCaller : String): Tuple2[Int,Int] = {
+		
+	}
+
+
+
+
 /* Take a Genotype String and check against DP limits*/
 
 	def checkDP (genos: Array[String], DPpos: Int, minDP: Int, maxDP: Int): Boolean = {
@@ -316,12 +329,22 @@ println("Built Pedigrees")
 		AO = format.indexOf("AO")
 		RO = format.indexOf("RO")
 		
+		format match{
+			case n if n.contains("DP") => vcfType = "gatk"
+			case n if n.contains("NR") => vcfType = "plat"
+			case n if n.contains("RO") => vcfType = "freeb"
+			case _ => vcfType = "unknown"
+		}
+		
+		
+		/*
 		if (format.contains("NV")){
 			AO = format.indexOf("NV")
 			RO = format.indexOf("NR")
 			DP = format.indexOf("NR")
 			vcfType = "platypus"
 		}
+		*/
 		
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
 try {		
