@@ -150,7 +150,7 @@ val errors = System.err
 	}
 
 	def gatkAD(indv: Array[String], ADval: Int, GTval: Int): Tuple2[Int,Int] = {
-		if (indv.size > ADval && indv(ADval) != "."){
+		if (ADval != -1 && indv.size > ADval && indv(ADval) != "."){
 			val RefAlt = indv(ADval).split(",")
 			val GT = rtGTs(indv(GTval)).sorted
 			(RefAlt(GT(0).toInt).toInt,RefAlt(GT(1).toInt).toInt)
@@ -434,7 +434,7 @@ try {
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							altsPar += refAlt._2
-							adratio += rc(refAlt._1,refAlt._2)
+							if (refAlt._2 != -1 ) adratio = rc(refAlt._1,refAlt._2) else println("No AD? " + vcfanimals(indv))
 							if (sigAD(refAlt._2)){
 								par += 1
 							}
@@ -447,7 +447,7 @@ try {
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							adratio += rc(refAlt._1,refAlt._2)						
+							if (refAlt._2 != -1 ) adratio = rc(refAlt._1,refAlt._2) else println("No AD? " + vcfanimals(indv))					
 							grands = grands ++ rtGTs(curAn(GT))
 							if (sigAD(refAlt._2)){
 								ances += 1
