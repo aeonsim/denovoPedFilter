@@ -245,7 +245,7 @@ def main (args: Array[String]): Unit = {
 	
 
 	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 minRAFQ=0.2}")
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -264,6 +264,12 @@ def main (args: Array[String]): Unit = {
 	val PLGLS = if (settings.contains("PLGL")) settings("PLGL").split(",") else Array(0,0,0)
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
+	settings("TYPE").toUpperCase match {
+		case "GATK" => vcfType = "gatk"
+		case "PLAT" => vcfType = "platypus"
+		case "FB" => vcfType = "freebayes"
+		case _ => println("\n\nUnknown VCF type, VCF type must be on of gatk, plat (platypus) or fb (Freebayes)"); System.exit(1)
+	}
 
 	val outname = settings("VCF").split("/")(settings("VCF").split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
@@ -403,14 +409,7 @@ println("Built Pedigrees")
 		DP = format.indexOf("DP")
 		AO = if (format.contains("NV")) format.indexOf("NV") else format.indexOf("AO")
 		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
-		
-		format match{
-			case n if n.contains("DP") => vcfType = "gatk"
-			case n if n.contains("NR") => vcfType = "platypus"
-			case n if n.contains("RO") => vcfType = "freebayes"
-			case _ => println("\n\nunknown VCF type"); System.exit(1)
-		}
-		
+				
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
 try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
