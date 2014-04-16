@@ -159,7 +159,7 @@ var PL = -1
 		} else {
 		if (PLexist){
 			//Check other Genotypes are atleast Phred 10 unlikely
-			if (indv(PL).split(",").sorted.tail.forall(_ > 10)) (1,0) else (1,-1)
+			if (indv(PL).split(",").sorted.tail.forall(_.toInt > 10)) (1,0) else (1,-1)
 		}else {
 			(1,-1)
 			}
