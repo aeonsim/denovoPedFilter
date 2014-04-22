@@ -474,8 +474,9 @@ try {
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
 			while(trioPos < trios.size){
-				fam = trios(trioPos)
+				var fam = trios(trioPos)
 				trioPos += 1
+				var indv = ""
 			//for (fam <- trios){
 	try {
 				var altsPar = 0
