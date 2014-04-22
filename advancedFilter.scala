@@ -231,6 +231,53 @@ var PL = -1
 		}
 	}
 	
+	
+/* Phase Code, return format is (sireAllele,damAllele)*/
+
+def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
+	val indvGT = indv(0)
+	val sireGT = sire(0)
+	val damGT = dam(0)
+	val indvPL = indv(PL).split(",").sorted.tail
+	val sirePL = sire(PL).split(",").sorted.tail
+	val damPL = dam(PL).split(",").sorted.tail
+if (indvPL(0).toInt >= 20 && sirePL(0).toInt >= 20 && damPL(0).toInt >= 20){
+	if((sireGT == "0/0" && damGT == "1/1" && indvGT == "0/1") || (sireGT == "1/1" && damGT == "0/0" && indvGT == "0/1")){
+		(sireGT(0).toString,damGT(0).toString)
+	} else {
+		if(sireGT == "0/1" && indvGT == "0/1" && damGT == "0/0") {
+			("1","0")
+		} else {
+				if(sireGT == "0/1" && indvGT == "0/1" && damGT == "1/1") {
+					("0","1")
+				} else {
+						if (damGT == "0/1" && indvGT == "0/1" && sireGT == "0/0" ) {
+							("0","1")
+						} else {
+							if (damGT == "0/1" && indvGT == "0/1" && sireGT == "1/1") {
+								("1","0")
+							} else {
+							("x","x")
+							}
+					}
+			}
+				
+	}
+	
+	}
+	}else {("x","x")}
+
+}
+
+def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
+	val childGT = child(0)
+	if (childGT == "1/1" || childGT == "0/0"){
+		if (curPhase._1 == childGT(0)) "S" else "D"
+		} else {
+		"U"
+		}
+}
+	
 
 /* Main body of Program */
 
@@ -244,7 +291,7 @@ def main (args: Array[String]): Unit = {
 	}
 	
 
-	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS"))) {
+	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS")) & (! settings.contains("TYPE"))) {
 		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
@@ -292,9 +339,8 @@ def main (args: Array[String]): Unit = {
 	var DP = -1
 	var RO = -1
 	var AO = -1
-	
-	
-
+	var lastPhase = new HashMap[String,Tuple2[String,String]]
+	var childState = new HashMap[String,String]
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
 */
@@ -383,13 +429,15 @@ println("Built Pedigrees")
 		print("EXFAM\t")
 		fam._2._7.foreach(s => print(s + "\t"))
 		print(fam._2._7.size + "\n\n")
+		lastPhase += fam._1 -> ("u","u")
+		childState += fam._1 -> ""
 	}
 
 /*
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning")
+	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo")
 
 	while (in_vcf.ready){
 		PL = -1
@@ -421,6 +469,7 @@ try {
 				var ances, par, kids, desc, popFreq, exFamFreq = 0
 				val maxDP = (ped._5 * 1.7).toInt
 				var adratio = 0.0
+				childState(fam._1) = ""
 				
 			/* Parental Test using permutations of Alleles */
 
@@ -429,6 +478,8 @@ try {
 				val proBand = line(vcfanimals(fam._1)).split(":")
 
 				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
+					var phasVal = phase(proBand,par1, par2)
+					if (phasVal != Tuple2("x","x")) lastPhase(fam._1) = phasVal
 					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
 					if (valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))){
 						par += 1
@@ -476,6 +527,8 @@ try {
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
+								val inherited = childPhase(lastPhase(fam._1),curAn)
+								childState(fam._1) = childState(fam._1) + inherited
 							}
 						}
 					}
@@ -577,14 +630,14 @@ try {
 						
 						if (reoccur && adratio == 0.0){
 							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
-								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t")
+								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${lastPhase(fam._1)._2}")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
 							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								print ("\t WARNING: Low confidence de novo\n")
+								print ("\t WARNING: Low confidence de novo\t${lastPhase(fam._1)._2}\n")
 							}else {
 								print("\n")
 							}//eelse
