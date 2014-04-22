@@ -608,7 +608,7 @@ try {
 			var allChildrenState = ""
 			for (indv <- ped._3){
 				if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
-				allChildrenState = allChildrenState + s"${indv}:${line(vcfanimals(indv)).split(':').apply(0)}:${allChildren(indv)} "
+				allChildrenState = allChildrenState + s"${indv}:${line(vcfanimals(indv)).split(':').apply(0)}:${allChildren(indv)}|"
 			}
 			/* -------- Denovo Check ---------- */
 
