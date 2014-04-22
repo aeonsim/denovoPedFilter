@@ -475,7 +475,7 @@ try {
 			var trioPos = 0
 			val triosArray = trios.keys.toArray
 			while(trioPos < triosArray.size){
-				var fam = trios(triosArray(trioPos))
+				var fam = trios.toArray.apply(trioPos)
 				trioPos += 1
 				var indv = ""
 			//for (fam <- trios){
