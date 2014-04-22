@@ -479,8 +479,8 @@ try {
 
 				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
 					var phasVal = phase(proBand,par1, par2)
-					println(phasVal)
 					if (phasVal != Tuple2("x","x")) lastPhase(fam._1) = phasVal
+					println( lastPhase(fam._1))
 					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
 					if (valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))){
 						par += 1
@@ -529,6 +529,7 @@ try {
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 								val inherited = childPhase(lastPhase(fam._1),curAn)
+								print(inherited)
 								if (inherited != "U") curChildState = curChildState + inherited
 							}
 						}
