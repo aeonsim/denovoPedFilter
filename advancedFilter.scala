@@ -270,7 +270,16 @@ if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt
 
 }
 
+/*
+def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Array[String], pedigree: HashMap[String, Array[String]]): String ={
+	if (pedigree.contains())
+	}
+*/
+
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
+	if (pedigree.contains())
+	
+	
 	val childGT = child(0)
 	if (childGT == "1/1" || childGT == "0/0"){
 		if (curPhase._1 == childGT(0).toString) "S" else "D"
@@ -293,7 +302,7 @@ def main (args: Array[String]): Unit = {
 	
 
 	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS")) & (! settings.contains("TYPE"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0,0,0 QUAL=0 minRAFQ=0.2 }")
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -309,7 +318,7 @@ def main (args: Array[String]): Unit = {
 	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
 	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR"))) true else false
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
-	val PLGLS = if (settings.contains("PLGL")) settings("PLGL").split(",") else Array(0,0,0)
+	val PLGLS = if (settings.contains("PLGL")) settings("PLGL") else 0
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
 	settings("TYPE").toUpperCase match {
@@ -342,6 +351,7 @@ def main (args: Array[String]): Unit = {
 	var AO = -1
 	var lastPhase = new HashMap[String,Tuple2[String,String]]
 	var childState = new HashMap[String,String]
+	var allChildren = new HashMap[String,String]
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
 */
@@ -405,6 +415,9 @@ def main (args: Array[String]): Unit = {
 			
 			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size != 0){
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
+				for (child <- children) {
+				allChildren += child -> ""
+				}
 			}
 		}//eif
 	}//ewhile
@@ -530,7 +543,10 @@ try {
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 								val inherited = childPhase(lastPhase(fam._1),curAn)
-								if (inherited != "U") curChildState = curChildState + inherited
+								if (inherited != "U") {
+									curChildState = curChildState + inherited
+									allChildren(indv) = inherited	
+								}
 								//print(curChildState)
 							}
 						}
@@ -591,6 +607,11 @@ try {
 
 			/* Check Pedigree segregation pattern */
 			if (curChildState != "") childState(fam._1) = curChildState
+			 
+			val allChildrenState = ""
+			for (indv <- ped._3){
+				allChildrenState = allChildrenState + s"${indv}:${allChildren(indv)}"
+			}
 			/* -------- Denovo Check ---------- */
 
 					val curPro = line(vcfanimals(fam._1)).split(":")
@@ -633,14 +654,14 @@ try {
 						
 						if (reoccur && adratio == 0.0){
 							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
-								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${childState(fam._1)}")
+								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${childState(fam._1)} allChildrenState")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
 							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								print ("\t WARNING: Low confidence de novo\t${childState(fam._1)}\n")
+								print ("\t WARNING: Low confidence de novo\t${childState(fam._1)} allChildrenState\n")
 							}else {
 								print("\n")
 							}//eelse
