@@ -452,7 +452,7 @@ println("Built Pedigrees")
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
 	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase S/D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo")
-
+	var lastChr = ""
 	while (in_vcf.ready){
 		PL = -1
 		PLexist = false
@@ -464,7 +464,10 @@ println("Built Pedigrees")
 			PL = if (format.contains("PL")) format.indexOf("PL") else format.indexOf("GL")
 			PLexist = true
 		}
-		
+		if (lastChr != line(0)){
+			lastChr = line(0)
+			allChildren.keys.foreach(s => allChildren(s) = "")
+		}
 		
 		AD = format.indexOf("AD")
 		GT = format.indexOf("GT")
@@ -501,7 +504,6 @@ try {
 				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
 					var phasVal = if (checkDP(proBand, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)) phase(proBand,par1, par2) else ("x","x")
 					if (phasVal != Tuple2("x","x")) lastPhase(fam._1) = phasVal
-					//println( lastPhase(fam._1))
 					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
 					if (valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))){
 						par += 1
