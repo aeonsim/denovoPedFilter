@@ -243,9 +243,12 @@ def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2
 	val sirePL = sire(PL).split(",").sorted.tail
 	val damPL = dam(PL).split(",").sorted.tail
 if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt >= minPLval){
-	if((sireGT == "0/0" && damGT == "1/1" && indvGT == "0/1") || (sireGT == "1/1" && damGT == "0/0" && indvGT == "0/1")){
-		(sireGT(0).toString,damGT(0).toString)
+	if(sireGT == "0/0" && damGT == "1/1" && (indvGT == "0/1" || indvGT == "1/0")){
+		("0","1")
 	} else {
+	 if (sireGT == "1/1" && damGT == "0/0" && (indvGT == "0/1" || indvGT == "1/0")){
+	 	("1","0")
+	 } else {
 		if(sireGT == "0/1" && indvGT == "0/1" && damGT == "0/0") {
 			("1","0")
 		} else {
@@ -262,7 +265,7 @@ if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt
 							}
 					}
 			}
-				
+		}		
 	}
 	
 	}
@@ -279,7 +282,7 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
 	if (childGT == "1/1" || childGT == "0/0"){
-		if (curPhase._1 == childGT(0).toString) "S" else "D"
+		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
 		} else {
 		"U"
 		}
@@ -496,7 +499,7 @@ try {
 				val proBand = line(vcfanimals(fam._1)).split(":")
 
 				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
-					var phasVal = phase(proBand,par1, par2)
+					var phasVal = if (checkDP(proBand, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)) phase(proBand,par1, par2) else ("x","x")
 					if (phasVal != Tuple2("x","x")) lastPhase(fam._1) = phasVal
 					//println( lastPhase(fam._1))
 					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
@@ -563,7 +566,7 @@ try {
 							}
 						}
 						if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
-						allChildrenState = allChildrenState + s"${indv}:${curAn(0)}:${if (curAn.size >= PL ) curAn(PL) else 0}:${allChildren(indv)}:\t"
+						allChildrenState = allChildrenState + s"${indv}:${curAn(0)}:${if (curAn.size >= PL ) curAn(PL) else 0}:${allChildren(indv)}\t"
 					}
 
 			//Desec
