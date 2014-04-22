@@ -478,7 +478,6 @@ try {
 				var fam = trios.toArray.apply(trioPos)
 				trioPos += 1
 				var indv = ""
-				//println(fam)
 			//for (fam <- trios){
 	try {
 				var altsPar = 0
@@ -490,7 +489,6 @@ try {
 				var allChildrenState = ""
 				var parPos, grandPos, childPos, descPos, popRef, popALT, popPos, exfPos = 0
 				
-				println(ped)
 			/* Parental Test using permutations of Alleles */
 
 				val par1 = line(vcfanimals(ped._2.apply(0))).split(":")
