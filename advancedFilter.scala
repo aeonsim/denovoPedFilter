@@ -607,8 +607,10 @@ try {
 			 
 			var allChildrenState = ""
 			for (indv <- ped._3){
-				if (isVar(line(vcfanimals(indv)).split(':').apply(0))){ if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1 }
-				allChildrenState = allChildrenState + s"${indv}:${line(vcfanimals(indv)).split(':').apply(0)}:${allChildren(indv)}|"
+				//if (isVar(line(vcfanimals(indv)).split(':').apply(0))){ if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1 }
+				if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
+				val curChild = line(vcfanimals(indv)).split(':')
+				allChildrenState = allChildrenState + s"${indv}:${curChild(0)}:${curChild(PL)}:${allChildren(indv)}:\t"
 			}
 			/* -------- Denovo Check ---------- */
 
