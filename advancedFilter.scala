@@ -478,6 +478,8 @@ try {
 				var fam = trios.toArray.apply(trioPos)
 				trioPos += 1
 				var indv = ""
+				println(fam)
+				println(ped._1.size + " " + ped._2.size) 
 			//for (fam <- trios){
 	try {
 				var altsPar = 0
@@ -506,7 +508,7 @@ try {
 
 			/* After checking that the Parent GT's can produce the Denovo check AD/RO/AO incase GT misscall */
 				while(parPos < ped._2.size){
-					indv = ped._2(parPos)
+					indv = ped._2.apply(parPos)
 					parPos += 1
 					//for (indv <- ped._2){
 						if (line(vcfanimals(indv))(0) != '.'){
@@ -523,7 +525,7 @@ try {
 			/* Loop through each family group and record Hets */
 					var grands: List[String] = Nil
 				while(grandPos < ped._1.size){
-					indv = ped._1(grandPos)
+					indv = ped._1.apply(grandPos)
 					grandPos += 1
 					//for (indv <- ped._1){
 						if (line(vcfanimals(indv))(0) != '.'){
@@ -568,7 +570,7 @@ try {
 
 			//Desec
 				while(descPos < ped._4.size){
-					indv = ped._4(descPos)
+					indv = ped._4.apply(descPos)
 					descPos += 1
 			//		for (indv <- ped._4){
 						if (line(vcfanimals(indv))(0) != '.'){
@@ -585,7 +587,7 @@ try {
 			var popRef, popALT, popPos, exfPos = 0
 					
 					while (popPos < ped._6.size){
-						val indv = ped._6(popPos)
+						val indv = ped._6.apply(popPos)
 						popPos += 1
 					//for (indv <- ped._6){
 						if (line(vcfanimals(indv))(0) != '.'){
