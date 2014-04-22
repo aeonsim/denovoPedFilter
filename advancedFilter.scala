@@ -472,8 +472,11 @@ println("Built Pedigrees")
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
 try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
-
-			for (fam <- trios){
+			var trioPos = 0
+			while(trioPos < trios.size){
+				fam = trios(trioPos)
+				trioPos += 1
+			//for (fam <- trios){
 	try {
 				var altsPar = 0
 				val ped = fam._2
@@ -481,7 +484,8 @@ try {
 				val maxDP = (ped._5 * 1.7).toInt
 				var adratio = 0.0
 				var sirePhase, damPhase = 0
-				//var curChildState = ""
+				var allChildrenState = ""
+				var parPos, grandPos, childPos, descPos = 0
 				
 			/* Parental Test using permutations of Alleles */
 
@@ -499,8 +503,10 @@ try {
 					}
 
 			/* After checking that the Parent GT's can produce the Denovo check AD/RO/AO incase GT misscall */
-
-					for (indv <- ped._2){
+				while(parPos < ped._2.size){
+					indv = ped._2(parPos)
+					parPos += 1
+					//for (indv <- ped._2){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -514,7 +520,10 @@ try {
 
 			/* Loop through each family group and record Hets */
 					var grands: List[String] = Nil
-					for (indv <- ped._1){
+				while(grandPos < ped._1.size){
+					indv = ped._1(grandPos)
+					grandPos += 1
+					//for (indv <- ped._1){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -533,10 +542,14 @@ try {
 					}
 
 			//Children
-					for (indv <- ped._3){
+				while(childPos < ped._3.size){
+					indv = ped._3(childPos)
+					childPos += 1
+					//for (indv <- ped._3){
+						val curAn = line(vcfanimals(indv)).split(":")
 						if (line(vcfanimals(indv))(0) != '.'){
 					//print(line(vcfanimals(indv)).split(":").apply(GT) + " " + isVar(line(vcfanimals(indv)).split(":").apply(GT)) + "\t")
-							val curAn = line(vcfanimals(indv)).split(":")
+
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
@@ -547,10 +560,15 @@ try {
 								//print(curChildState)
 							}
 						}
+						if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
+						allChildrenState = allChildrenState + s"${indv}:${curAn(0)}:${curAn(PL)}:${allChildren(indv)}:\t"
 					}
 
 			//Desec
-					for (indv <- ped._4){
+				while(descPos < ped._4.size){
+					indv = ped._4(descPos)
+					descPos += 1
+			//		for (indv <- ped._4){
 						if (line(vcfanimals(indv))(0) != '.'){
 					//print(line(vcfanimals(indv)).split(":").apply(GT) + " " + isVar(line(vcfanimals(indv)).split(":").apply(GT)) + "\t")
 							val curAn = line(vcfanimals(indv)).split(":")
@@ -562,9 +580,12 @@ try {
 					}
 
 			/* Population Calc */
-			var popRef, popALT = 0
-
-					for (indv <- ped._6){
+			var popRef, popALT, popPos, exfPos = 0
+					
+					while (popPos < ped._6.size){
+						val indv = ped._6(popPos)
+						popPos += 1
+					//for (indv <- ped._6){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -591,7 +612,10 @@ try {
 					
 			/* Extended family Calc */
 
-					for (indv <- ped._7){
+					while (exfPos < ped._7.size){
+						val indv = ped._7(popPos)
+						exfPos += 1
+					//for (indv <- ped._7){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -604,14 +628,14 @@ try {
 
 			/* Check Pedigree segregation pattern */
 			//if (curChildState != "") childState(fam._1) = curChildState
-			 
-			var allChildrenState = ""
+			/* 
 			for (indv <- ped._3){
 				//if (isVar(line(vcfanimals(indv)).split(':').apply(0))){ if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1 }
 				if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
 				val curChild = line(vcfanimals(indv)).split(':')
 				allChildrenState = allChildrenState + s"${indv}:${curChild(0)}:${curChild(PL)}:${allChildren(indv)}:\t"
 			}
+			*/
 			/* -------- Denovo Check ---------- */
 
 					val curPro = line(vcfanimals(fam._1)).split(":")
