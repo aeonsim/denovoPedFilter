@@ -490,7 +490,7 @@ try {
 				var allChildrenState = ""
 				var parPos, grandPos, childPos, descPos, popRef, popALT, popPos, exfPos = 0
 				
-				//println(ped._1.size + " " + ped._2.size) 
+				println(ped)
 			/* Parental Test using permutations of Alleles */
 
 				val par1 = line(vcfanimals(ped._2.apply(0))).split(":")
@@ -523,7 +523,7 @@ try {
 					}
 
 			/* Loop through each family group and record Hets */
-					var grands: List[String] = Nil
+				var grands: List[String] = Nil
 				while(grandPos < ped._1.size){
 					indv = ped._1.apply(grandPos)
 					grandPos += 1
@@ -547,7 +547,7 @@ try {
 
 			//Children
 				while(childPos < ped._3.size){
-					indv = ped._3(childPos)
+					indv = ped._3.apply(childPos)
 					childPos += 1
 					//for (indv <- ped._3){
 						val curAn = line(vcfanimals(indv)).split(":")
