@@ -273,7 +273,7 @@ if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
 	if (childGT == "1/1" || childGT == "0/0"){
-		if (curPhase._1 == childGT(0)) "S" else "D"
+		if (curPhase._1 == childGT(0).toString) "S" else "D"
 		} else {
 		"U"
 		}
