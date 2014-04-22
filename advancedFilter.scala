@@ -565,7 +565,7 @@ try {
 							}
 						}
 						if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
-						allChildrenState = allChildrenState + s"${indv}:${curAn(0)}:${curAn(PL)}:${allChildren(indv)}:\t"
+						allChildrenState = allChildrenState + s"${indv}:${curAn(0)}:${if (curAn.size >= PL ) curAn(PL) else .}:${allChildren(indv)}:\t"
 					}
 
 			//Desec
