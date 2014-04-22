@@ -478,7 +478,7 @@ try {
 				var fam = trios.toArray.apply(trioPos)
 				trioPos += 1
 				var indv = ""
-				println(fam)
+				//println(fam)
 			//for (fam <- trios){
 	try {
 				var altsPar = 0
@@ -488,9 +488,9 @@ try {
 				var adratio = 0.0
 				var sirePhase, damPhase = 0
 				var allChildrenState = ""
-				var parPos, grandPos, childPos, descPos = 0
+				var parPos, grandPos, childPos, descPos, popRef, popALT, popPos, exfPos = 0
 				
-				println(ped._1.size + " " + ped._2.size) 
+				//println(ped._1.size + " " + ped._2.size) 
 			/* Parental Test using permutations of Alleles */
 
 				val par1 = line(vcfanimals(ped._2.apply(0))).split(":")
@@ -584,7 +584,6 @@ try {
 					}
 
 			/* Population Calc */
-			var popRef, popALT, popPos, exfPos = 0
 					
 					while (popPos < ped._6.size){
 						val indv = ped._6.apply(popPos)
@@ -617,7 +616,7 @@ try {
 			/* Extended family Calc */
 
 					while (exfPos < ped._7.size){
-						val indv = ped._7(popPos)
+						val indv = ped._7.apply(exfPos)
 						exfPos += 1
 					//for (indv <- ped._7){
 						if (line(vcfanimals(indv))(0) != '.'){
