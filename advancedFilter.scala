@@ -277,9 +277,6 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 */
 
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
-	if (pedigree.contains())
-	
-	
 	val childGT = child(0)
 	if (childGT == "1/1" || childGT == "0/0"){
 		if (curPhase._1 == childGT(0).toString) "S" else "D"
