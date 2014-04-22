@@ -469,7 +469,7 @@ try {
 				var ances, par, kids, desc, popFreq, exFamFreq = 0
 				val maxDP = (ped._5 * 1.7).toInt
 				var adratio = 0.0
-				childState(fam._1) = ""
+				var curChildState = ""
 				
 			/* Parental Test using permutations of Alleles */
 
@@ -528,7 +528,7 @@ try {
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 								val inherited = childPhase(lastPhase(fam._1),curAn)
-								childState(fam._1) = childState(fam._1) + inherited
+								if (inherited != "U") curChildState = curChildState + inherited
 							}
 						}
 					}
@@ -587,7 +587,7 @@ try {
 					//errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
 
 			/* Check Pedigree segregation pattern */
-
+			if (curChildState != "") childState(fam._1) = curChildState
 			/* -------- Denovo Check ---------- */
 
 					val curPro = line(vcfanimals(fam._1)).split(":")
