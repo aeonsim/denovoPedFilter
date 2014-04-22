@@ -480,7 +480,7 @@ try {
 				var ances, par, kids, desc, popFreq, exFamFreq = 0
 				val maxDP = (ped._5 * 1.7).toInt
 				var adratio = 0.0
-				var curChildState = ""
+				//var curChildState = ""
 				
 			/* Parental Test using permutations of Alleles */
 
@@ -541,7 +541,7 @@ try {
 								kids += 1
 								val inherited = childPhase(lastPhase(fam._1),curAn)
 								if (inherited != "U") {
-									curChildState = curChildState + inherited
+									//curChildState = curChildState + inherited
 									allChildren(indv) = inherited	
 								}
 								//print(curChildState)
@@ -603,11 +603,11 @@ try {
 					//errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
 
 			/* Check Pedigree segregation pattern */
-			if (curChildState != "") childState(fam._1) = curChildState
+			//if (curChildState != "") childState(fam._1) = curChildState
 			 
 			var allChildrenState = ""
 			for (indv <- ped._3){
-				allChildrenState = allChildrenState + s"${indv}:${allChildren(indv)} "
+				allChildrenState = allChildrenState + s"${indv}:${line(vcfanimals(indv)).split(':').apply(0)}:${allChildren(indv)} "
 			}
 			/* -------- Denovo Check ---------- */
 
@@ -651,14 +651,14 @@ try {
 						
 						if (reoccur && adratio == 0.0){
 							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
-								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${childState(fam._1)} ${allChildrenState}")
+								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
 							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								print ("\t WARNING: Low confidence de novo\t${childState(fam._1)} ${allChildrenState}\n")
+								print ("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
 							}else {
 								print("\n")
 							}//eelse
