@@ -473,8 +473,9 @@ println("Built Pedigrees")
 try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
-			while(trioPos < trios.size){
-				var fam = trios(trioPos)
+			val triosArray = trios.keys.toArray
+			while(trioPos < triosArray.size){
+				var fam = triosArray(trioPos)
 				trioPos += 1
 				var indv = ""
 			//for (fam <- trios){
