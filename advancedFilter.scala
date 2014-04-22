@@ -605,7 +605,7 @@ try {
 			/* Check Pedigree segregation pattern */
 			if (curChildState != "") childState(fam._1) = curChildState
 			 
-			val allChildrenState = ""
+			var allChildrenState = ""
 			for (indv <- ped._3){
 				allChildrenState = allChildrenState + s"${indv}:${allChildren(indv)}"
 			}
