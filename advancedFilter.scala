@@ -235,13 +235,14 @@ var PL = -1
 /* Phase Code, return format is (sireAllele,damAllele)*/
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
+	val minPLval = 10
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT = dam(0)
 	val indvPL = indv(PL).split(",").sorted.tail
 	val sirePL = sire(PL).split(",").sorted.tail
 	val damPL = dam(PL).split(",").sorted.tail
-if (indvPL(0).toInt >= 20 && sirePL(0).toInt >= 20 && damPL(0).toInt >= 20){
+if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt >= minPLval){
 	if((sireGT == "0/0" && damGT == "1/1" && indvGT == "0/1") || (sireGT == "1/1" && damGT == "0/0" && indvGT == "0/1")){
 		(sireGT(0).toString,damGT(0).toString)
 	} else {
@@ -529,8 +530,8 @@ try {
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 								val inherited = childPhase(lastPhase(fam._1),curAn)
-								print(inherited)
 								if (inherited != "U") curChildState = curChildState + inherited
+								print(curChildState)
 							}
 						}
 					}
