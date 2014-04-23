@@ -88,50 +88,6 @@ var PL = -1
  			false
  		}
 	}
-
-/* Extract the correct Read counts from AD or RO/AO AD format is REF,ALT,ALT2,... */
-/*
-	def selROvAD(indv: Array[String], ADval: Int, ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
-		var alt = -1
-		var ref = -1
-		val gtsplit = if (indv(GTval).contains('/')) indv(GTval).split('/') else indv(GTval).split('|')
-		if (gtsplit(0) != "." && indv.size >= 3 && ADval != -1){
-		var refGT = gtsplit(0).toInt
-		var altGT = gtsplit(1).toInt // initial work to deal with multiple alleles ie GT = 2/3
-		if (ADval != -1){
-			if (indv(ADval) != "."){
-				ref = indv(ADval).split(",")(refGT).toInt
-				if (altGT == 0) {
-					alt = indv(ADval).split(",")(altGT + 1).toInt
-					}
-				else {
-					alt = indv(ADval).split(",")(altGT).toInt
-				}
-			} else {
-				ref = 1
-				alt = 1000000
-			}
-		} else {
-			val alts = indv(AOval).split(",")
-			if (ROval != -1 && AOval != -1){
-				if (altGT == 0){
-					alt = alts(0).toInt
-				} else {
-					alt = alts(altGT - 1).toInt
-				}
-				if (refGT == 0){
-					ref = if (vcfType == "platypus") indv(ROval).split(",")(0).toInt else indv(ROval).toInt
-				} else {
-					ref = if (vcfType == "platypus") (indv(ROval).split(",")(refGT - 1).toInt - alt) else alts(refGT - 1).toInt
-				}
-			}//eif
-		}//eelse
-		} else {
-				ref = 1
-				alt = 1000000
-		}
-			(ref,alt)
-	}*/
 	
 	/* Return Genotypes as List*/
 	
@@ -352,6 +308,7 @@ def main (args: Array[String]): Unit = {
 	var lastPhase = new HashMap[String,Tuple2[String,String]]
 	var childState = new HashMap[String,String]
 	var allChildren = new HashMap[String,String]
+	var childHaps = new HashMap[String, List[Tuple2[String,String]]]
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
 */
@@ -417,6 +374,7 @@ def main (args: Array[String]): Unit = {
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 				for (child <- children) {
 				allChildren += child -> ""
+				childHaps += child -> (("Start", "U") :: Nil)
 				}
 			}
 		}//eif
@@ -563,12 +521,13 @@ try {
 								val inherited = childPhase(lastPhase(fam._1),curAn)
 								if (inherited != "U") {
 									allChildren(indv) = inherited
+									childHaps(indv) = (s"${line(0)}:${line(1)}",inherited) :: childHaps(indv) 
 								}
 								//print(curChildState)
 							}
 						}
 						if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
-						allChildrenState = allChildrenState + s"${indv}:${curAn(0)}:${if (curAn.size >= PL ) curAn(PL) else 0}:${allChildren(indv)}\t"
+						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(indv)}\t"
 					}
 
 			//Desec
@@ -726,6 +685,13 @@ try {
 	}// Ewhile
 	in_vcf.close
 	out_vcf.close
+	
+	for (child <- childHaps){
+		val out = new BufferedWriter(new FileWriter(child._1 + "-origin.txt"))
+		child._2.foreach(s => out.write(s._1 + "\t" + s._2))
+		out.close
+	}
+	
 }//eMain
 
 }//eObject
