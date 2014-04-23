@@ -191,7 +191,7 @@ var PL = -1
 /* Phase Code, return format is (sireAllele,damAllele)*/
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
-	val minPLval = if (vcfType == "gatk") 20 else 5
+	val minPLval = if (vcfType == "gatk") 25 else 5
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT = dam(0)
