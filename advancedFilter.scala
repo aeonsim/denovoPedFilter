@@ -308,7 +308,7 @@ def main (args: Array[String]): Unit = {
 	var lastPhase = new HashMap[String,Tuple2[String,String]]
 	var childState = new HashMap[String,String]
 	var allChildren = new HashMap[String,String]
-	var childHaps = new HashMap[String, List[Tuple2[String,String]]]
+	var childHaps = new HashMap[String, List[String]]
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
 */
@@ -374,7 +374,7 @@ def main (args: Array[String]): Unit = {
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 				for (child <- children) {
 				allChildren += child -> ""
-				childHaps += child -> (("Start", "U") :: Nil)
+				childHaps += child ->  ("Chr\tStart\tEnd\tState" :: Nil)
 				}
 			}
 		}//eif
@@ -513,17 +513,14 @@ try {
 					//for (indv <- ped._3){
 						val curAn = line(vcfanimals(indv)).split(":")
 						if (line(vcfanimals(indv))(0) != '.'){
-					//print(line(vcfanimals(indv)).split(":").apply(GT) + " " + isVar(line(vcfanimals(indv)).split(":").apply(GT)) + "\t")
-
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 								val inherited = childPhase(lastPhase(fam._1),curAn)
 								if (inherited != "U") {
 									allChildren(indv) = inherited
-									childHaps(indv) = (s"${line(0)}:${line(1)}",inherited) :: childHaps(indv) 
+									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${inherited}" :: childHaps(indv) 
 								}
-								//print(curChildState)
 							}
 						}
 						if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
@@ -536,7 +533,6 @@ try {
 					descPos += 1
 			//		for (indv <- ped._4){
 						if (line(vcfanimals(indv))(0) != '.'){
-					//print(line(vcfanimals(indv)).split(":").apply(GT) + " " + isVar(line(vcfanimals(indv)).split(":").apply(GT)) + "\t")
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
@@ -688,7 +684,7 @@ try {
 	
 	for (child <- childHaps){
 		val out = new BufferedWriter(new FileWriter(child._1 + "-origin.txt"))
-		child._2.foreach(s => out.write(s._1 + "\t" + s._2))
+		child._2.reverse.foreach(s => out.write(s + "\n"))
 		out.close
 	}
 	
