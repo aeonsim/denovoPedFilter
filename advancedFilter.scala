@@ -257,8 +257,8 @@ def main (args: Array[String]): Unit = {
 	}
 	
 
-	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS")) & (! settings.contains("TYPE"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
+	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS")) & (! settings.contains("TYPE")) & (! settings.contains("OUT"))) {
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt OUT=denovo-stats.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -267,8 +267,7 @@ def main (args: Array[String]): Unit = {
 	val in_vcf = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(settings("VCF")))))
 	val in_ped = new BufferedReader(new FileReader(settings("PED")))
 	val in_pro = new BufferedReader(new FileReader(settings("TRIOS")))
-	
-	
+		
 	/* Default settings*/
 	val minDP = if (settings.contains("MINDP")) settings("MINDP").toInt else 0
 	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
@@ -287,6 +286,7 @@ def main (args: Array[String]): Unit = {
 	val outname = settings("VCF").split("/")(settings("VCF").split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
 	val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
+	val statsOut = new BufferedWriter(new FileWriter(settings("OUT")))
 	
 	var pedFile = new HashMap[String, Array[String]]
 
@@ -382,25 +382,25 @@ def main (args: Array[String]): Unit = {
 
 	in_pro.close
 
-println("Built Pedigrees")
+statsOut.write("Built Pedigrees\n")
 //Closed proband file
 
 /* Report identified Trios & there Pedigree Structure*/
 
 	for (fam <- trios){
-		println(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}")
-		print("Grandparents\t")
-		fam._2._1.foreach(s => print(s + "\t"))
-		print(fam._2._1.size + "\n")
-		print("Children\t")		
-		fam._2._3.foreach(s => print(s + "\t"))
-		print(fam._2._3.size + "\n")
-		print("Descendents\t")
-		fam._2._4.foreach(s => print(s + "\t"))
-		print(fam._2._4.size + "\n")
-		print("EXFAM\t")
-		fam._2._7.foreach(s => print(s + "\t"))
-		print(fam._2._7.size + "\n\n")
+		statsOut.write(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}\n")
+		statsOut.write("Grandparents\t")
+		fam._2._1.foreach(s => statsOut.write(s + "\t"))
+		statsOut.write(fam._2._1.size + "\n")
+		statsOut.write("Children\t")		
+		fam._2._3.foreach(s => statsOut.write(s + "\t"))
+		statsOut.write(fam._2._3.size + "\n")
+		statsOut.write("Descendents\t")
+		fam._2._4.foreach(s => statsOut.write(s + "\t"))
+		statsOut.write(fam._2._4.size + "\n")
+		statsOut.write("EXFAM\t")
+		fam._2._7.foreach(s => statsOut.write(s + "\t"))
+		statsOut.write(fam._2._7.size + "\n\n")
 		lastPhase += fam._1 -> ("u","u")
 		childState += fam._1 -> ""
 	}
@@ -409,7 +409,7 @@ println("Built Pedigrees")
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase S/D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo")
+	statsOut.write(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase S/D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
 	var lastChr = ""
 	while (in_vcf.ready){
 		PL = -1
@@ -640,17 +640,17 @@ try {
 							}
 						
 						if (reoccur && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${sirePhase}|${damPhase}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
-								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}")
+							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${sirePhase}|${damPhase}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${sirePhase}|${damPhase}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${sirePhase}|${damPhase}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								print ("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
+								statsOut.write("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
 							}else {
-								print("\n")
+								statsOut.write("\n")
 							}//eelse
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}//eif reoccur
@@ -661,7 +661,7 @@ try {
 					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" +
+							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t\n" +
 							 proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
