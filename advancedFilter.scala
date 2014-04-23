@@ -237,7 +237,7 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
-	if (childGT == "1/1" || childGT == "0/0"){
+	if (curPhase != ("x","x") && (childGT == "1/1" || childGT == "0/0")){
 		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
 		} else {
 		"U"
@@ -434,7 +434,7 @@ statsOut.write("Built Pedigrees\n")
 		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
 				
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
-try {		
+//try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
 			val triosArray = trios.keys.toArray
@@ -445,7 +445,7 @@ try {
 				//trioPos += 1
 				var indv = ""
 			
-	try {
+	//try {
 				var altsPar = 0
 				val ped = fam._2
 				var ances, par, kids, desc, popFreq, exFamFreq = 0
@@ -669,16 +669,16 @@ try {
 					
 
 				}//eisVAR
-				} catch {
+				/*} catch {
 					case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + " " + fam._1) ; e.printStackTrace()
-				}
+				}*/
 			}//Efor fam <- trios
 		} else {
 			//println(s"Error ${line(0)} ${line(1)} ${line.size}")
 	} //else
-} catch {
+/*} catch {
  	case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + e); e.printStackTrace()
-}
+}*/
 
 	}// Ewhile
 	in_vcf.close
