@@ -438,11 +438,13 @@ try {
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
 			val triosArray = trios.keys.toArray
-			while(trioPos < triosArray.size){
-				var fam = trios.toArray.apply(trioPos)
-				trioPos += 1
+			
+			for (fam <- trios.toArray.par){
+			//while(trioPos < triosArray.size){
+				//var fam = trios.toArray.apply(trioPos)
+				//trioPos += 1
 				var indv = ""
-			//for (fam <- trios){
+			
 	try {
 				var altsPar = 0
 				val ped = fam._2
