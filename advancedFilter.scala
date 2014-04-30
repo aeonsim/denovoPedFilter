@@ -367,6 +367,9 @@ def main (args: Array[String]): Unit = {
 				if (pedFile.contains(indv) && ( pedFile(indv)(2) == parents(0) || pedFile(indv)(3) == parents(0) )  && pedFile(indv)(1) != curPro(0)){
 					extFam = indv :: extFam
 				}
+				if (! pedFile.contains(indv)){
+					pedFile += indv -> Array("noFAM",indv,"0","0","0")
+				}
 			}//efor
 			var tmpdesc = descendents.filterNot(x => ((x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)|| (! vcfanimals.contains(x))))
 			
@@ -439,7 +442,6 @@ statsOut.write("Built Pedigrees\n")
 //try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
-			trios.keys.foreach(println)
 			val triosArray = trios.keys.toArray
 			
 			for (fam <- trios.toArray.par){
