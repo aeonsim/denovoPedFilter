@@ -237,8 +237,10 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
-	if (curPhase != ("x","x") && (childGT == "1/1" || childGT == "0/0")){
-		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
+	val minPLval = if (vcfType == "gatk") 30 else 5
+	val childPL = child(PL).split(",").sorted.tail
+	if (curPhase != ("x","x") && childPL(0) >= minPLval && (childGT == "1/1" || childGT == "0/0")){
+		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"ß
 		} else {
 		"U"
 		}
@@ -437,6 +439,7 @@ statsOut.write("Built Pedigrees\n")
 //try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
+			trios.keys.foreach(println)
 			val triosArray = trios.keys.toArray
 			
 			for (fam <- trios.toArray.par){
