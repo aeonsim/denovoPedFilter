@@ -239,8 +239,8 @@ def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
 	val minPLval = if (vcfType == "gatk") 30 else 5
 	val childPL = child(PL).split(",").sorted.tail
-	if (curPhase != ("x","x") && childPL(0) >= minPLval && (childGT == "1/1" || childGT == "0/0")){
-		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"ß
+	if ((curPhase._1 != "x") && (childPL(0).toInt >= minPLval) && (childGT == "1/1" || childGT == "0/0")){
+		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
 		} else {
 		"U"
 		}
