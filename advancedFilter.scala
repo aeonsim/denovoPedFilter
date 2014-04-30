@@ -430,6 +430,7 @@ println("Built Pedigrees\n")
 		if (lastChr != line(0)){
 			lastChr = line(0)
 			allChildren.keys.foreach(s => allChildren(s) = "")
+			errors.print(line(0))
 		}
 		
 		AD = format.indexOf("AD")
