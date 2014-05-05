@@ -79,10 +79,10 @@ var PL = -1
 
 	def isVar(genotype:String): Boolean = {
 		if (genotype.size == 3 && (genotype(0) != '.')) {
-			if ((genotype(0) != '0' && genotype(2) != '0')) {
-				true
+			if ((genotype(0) == '0' && genotype(2) == '0')) {
+				false
 			} else {
- 				false
+ 				true
 			}
 		} else {
  			false
@@ -191,7 +191,7 @@ var PL = -1
 /* Phase Code, return format is (sireAllele,damAllele)*/
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
-	val minPLval = if (vcfType == "gatk") 25 else 5
+	val minPLval = if (vcfType == "gatk") 40 else 5
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT = dam(0)
@@ -205,16 +205,16 @@ if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt
 	 if (sireGT == "1/1" && damGT == "0/0" && (indvGT == "0/1" || indvGT == "1/0")){
 	 	("1","0")
 	 } else {
-		if(sireGT == "0/1" && indvGT == "0/1" && damGT == "0/0") {
+		if(sireGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && damGT == "0/0") {
 			("1","0")
 		} else {
-				if(sireGT == "0/1" && indvGT == "0/1" && damGT == "1/1") {
+				if(sireGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && damGT == "1/1") {
 					("0","1")
 				} else {
-						if (damGT == "0/1" && indvGT == "0/1" && sireGT == "0/0" ) {
+						if (damGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && sireGT == "0/0" ) {
 							("0","1")
 						} else {
-							if (damGT == "0/1" && indvGT == "0/1" && sireGT == "1/1") {
+							if (damGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && sireGT == "1/1") {
 								("1","0")
 							} else {
 							("x","x")
@@ -237,9 +237,9 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
-	val minPLval = if (vcfType == "gatk") 30 else 5
+	val minPLval = if (vcfType == "gatk") 40 else 5
 	val childPL = child(PL).split(",").sorted.tail
-	if ((curPhase._1 != "x") && (childPL(0).toInt >= minPLval) && (childGT == "1/1" || childGT == "0/0")){
+	if ((curPhase._1 != "x") && (! childPL.exists(_.toInt <= minPLval)) && (childGT == "1/1" || childGT == "0/0")){
 		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
 		} else {
 		"U"
@@ -273,7 +273,7 @@ def main (args: Array[String]): Unit = {
 	/* Default settings*/
 	val minDP = if (settings.contains("MINDP")) settings("MINDP").toInt else 0
 	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
-	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR"))) true else false
+	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR").toUpperCase)) true else false
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
 	val PLGLS = if (settings.contains("PLGL")) settings("PLGL") else 0
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
@@ -356,7 +356,7 @@ def main (args: Array[String]): Unit = {
 		descendents = Nil
 		extFam = Nil
 		if (pedFile.contains(curPro(0)) && animalIDS.contains(curPro(0))){
-			parents = pedFile(curPro(0))(2) :: pedFile(curPro(0))(3) :: Nil
+			parents = List(pedFile(curPro(0))(2),pedFile(curPro(0))(3))
 			ancestors = itPed(pedFile,curPro(0)).tail.filterNot(x => parents.contains(x) || (! vcfanimals.contains(x)))
 			children = findChildren(pedFile,vcfanimals,curPro(0))
 			for (indv <- animalIDS.toList){ //.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))){
@@ -379,7 +379,7 @@ def main (args: Array[String]): Unit = {
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 				for (child <- children) {
 				allChildren += child -> ""
-				childHaps += child ->  ("Chr\tStart\tEnd\tState" :: Nil)
+				childHaps += child ->  ("chr1\t1\t1\tU" :: Nil)
 				}
 			}
 		}//eif
@@ -466,10 +466,10 @@ println("Built Pedigrees\n")
 				val par1 = line(vcfanimals(ped._2.apply(0))).split(":")
 				val par2 = line(vcfanimals(ped._2.apply(1))).split(":")
 				val proBand = line(vcfanimals(fam._1)).split(":")
+			if (isVar(proBand(GT))){
 
 				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
 					var phasVal = if (checkDP(proBand, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)) phase(proBand,par1, par2) else ("x","x")
-					if (phasVal != Tuple2("x","x")) lastPhase(fam._1) = phasVal
 					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
 					if (valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))){
 						par += 1
@@ -524,14 +524,16 @@ println("Built Pedigrees\n")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
-								val inherited = childPhase(lastPhase(fam._1),curAn)
-								if (inherited != "U") {
-									allChildren(indv) = inherited
-									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${inherited}" :: childHaps(indv) 
+								val inherited = childPhase(phasVal,curAn)
+								if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
+								val parID = if (inherited == "S") ped._2.apply(0) else ped._2.apply(1)
+									allChildren(indv) = parID
+									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${parID}" :: childHaps(indv)
+									//if (inherited == "S") sirePhase += 1 else damPhase += 1
 								}
 							}
 						}
-						if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
+						
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(indv)}\t"
 					}
 
@@ -593,18 +595,7 @@ println("Built Pedigrees\n")
 							}
 						}
 					}
-					//errors.println(s"${line(0)}\t${line(1)}\tAnces\t${ances}\tPar\t${par}\tkids\t${kids}\tdesc\t${desc}\t\t${popFreq - (1 + kids + desc)}")
 
-			/* Check Pedigree segregation pattern */
-			//if (curChildState != "") childState(fam._1) = curChildState
-			/* 
-			for (indv <- ped._3){
-				//if (isVar(line(vcfanimals(indv)).split(':').apply(0))){ if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1 }
-				if (allChildren(indv) == "S") sirePhase += 1 else damPhase += 1
-				val curChild = line(vcfanimals(indv)).split(':')
-				allChildrenState = allChildrenState + s"${indv}:${curChild(0)}:${curChild(PL)}:${allChildren(indv)}:\t"
-			}
-			*/
 			/* -------- Denovo Check ---------- */
 
 					val curPro = line(vcfanimals(fam._1)).split(":")
@@ -675,24 +666,42 @@ println("Built Pedigrees\n")
 					
 
 				}//eisVAR
-				/*} catch {
-					case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + " " + fam._1) ; e.printStackTrace()
-				}*/
+			} // IS VAR
 			}//Efor fam <- trios
-		} else {
-			//println(s"Error ${line(0)} ${line(1)} ${line.size}")
-	} //else
-/*} catch {
- 	case e: Exception  => errors.println(line.reduceLeft{(a,b) => a + "\t" + b} + e); e.printStackTrace()
-}*/
-
+		}//IF Valid VCF line
 	}// Ewhile
 	in_vcf.close
 	out_vcf.close
 	
 	for (child <- childHaps){
-		val out = new BufferedWriter(new FileWriter(child._1 + "-origin.txt"))
-		child._2.reverse.foreach(s => out.write(s + "\n"))
+		val childOrigin = child._2.reverse.toArray
+		errors.print(childOrigin.size + "\n")
+		val out = new BufferedWriter(new FileWriter(child._1 + "-origin.bed"))
+		var count = 1
+		var lastPos, lastChr, lastOrig = "" 
+		while (count < childOrigin.size){
+			val cline = childOrigin(count).split("\t")
+			if (lastChr == ""){
+				lastChr = cline(0)
+				lastPos = cline(1)
+				lastOrig = cline(3)
+				out.write(s"${cline(0)}\t${cline(1)}\t")
+			}
+				if ((cline(3) != lastOrig) || (lastChr != cline(0))){
+					out.write(s"${lastPos}\t${lastOrig}\n")
+					lastPos = cline(1)
+					lastChr = cline(0)
+					lastOrig = cline(3)
+					out.write(s"${cline(0)}\t${cline(1)}\t")
+				} else {
+					lastPos = cline(1)
+				}
+			
+			count += 1
+
+		}
+		out.write(s"${lastPos}\t${lastOrig}\n")
+		//child._2.reverse.foreach(s => out.write(s + "\n"))
 		out.close
 	}
 	
