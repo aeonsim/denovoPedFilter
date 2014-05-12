@@ -457,7 +457,7 @@ println("Built Pedigrees\n")
 				//var fam = trios.toArray.apply(trioPos)
 				//trioPos += 1
 				var indv = ""
-				var kidsPhase : Listp[String] = Nil
+				var kidsPhase : List[String] = Nil
 	//try {
 				var altsPar = 0
 				val ped = fam._2
@@ -532,7 +532,8 @@ println("Built Pedigrees\n")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							
 							if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
-								val parID = if (inherited == "S") ped._2.apply(0) ; sirePhase += 1 else ped._2.apply(1); damPhase += 1
+								val parID = if (inherited == "S") ped._2.apply(0) else ped._2.apply(1)
+								if (inherited == "S") sirePhase += 1 else damPhase += 1
 									allChildren(indv) = parID
 									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${parID}" :: childHaps(indv)
 								}
@@ -647,7 +648,7 @@ println("Built Pedigrees\n")
 							){
 						//denovo = true
 						
-						var phaseQual == ""
+						var phaseQual = ""
 
 						if (kidsPhase.exists(_ == ped._2.apply(0)) && kidsPhase.exists(_ == ped._2.apply(1))){
 							//Inconsistent Phase
@@ -655,6 +656,7 @@ println("Built Pedigrees\n")
 						} else {
 							phaseQual = "Good\t" + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
 						}
+						
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
 							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
