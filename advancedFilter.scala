@@ -95,6 +95,8 @@ var PL = -1
 		val gts = if (genotype.size == 3 && genotype.contains('/')) genotype.split('/') else genotype.split('|')
 		gts.toList
 	}
+	
+	/* Select method for returning Ref & Alt allele counts*/
 
 	def selROvAD(indv: Array[String], ADval: Int, ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
 		var refAlt = (1,-1)
@@ -107,6 +109,7 @@ var PL = -1
 		refAlt
 	}
 
+	/* GATK return Ref & Alt counts*/
 	def gatkAD(indv: Array[String], ADval: Int, GTval: Int): Tuple2[Int,Int] = {
 		if (ADval != -1 && indv.size > ADval && indv(ADval) != "."){
 			val RefAlt = indv(ADval).split(",")
@@ -122,6 +125,7 @@ var PL = -1
 		}
 	}
 	
+	/* Platy return Ref & Alt counts*/
 	def platypusRefAlt(indv: Array[String], ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
 		var alt = -1
 		var ref = 1
@@ -147,6 +151,7 @@ var PL = -1
 		(ref,alt)
 	}
 
+	/* Freebayes return Ref & Alt counts*/
 	def fbRefAlt(indv: Array[String], ROval: Int, AOval: Int, GTval: Int): Tuple2[Int,Int] = {
 		var alt = -1
 		var ref = 1
@@ -234,6 +239,8 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 	if (pedigree.contains())
 	}
 */
+
+/* Take phased site from parents and use Homozygous SNPs in Child to drop phase down*/
 
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
@@ -450,7 +457,7 @@ println("Built Pedigrees\n")
 				//var fam = trios.toArray.apply(trioPos)
 				//trioPos += 1
 				var indv = ""
-			
+				var kidsPhase : Listp[String] = Nil
 	//try {
 				var altsPar = 0
 				val ped = fam._2
@@ -521,16 +528,18 @@ println("Built Pedigrees\n")
 					//for (indv <- ped._3){
 						val curAn = line(vcfanimals(indv)).split(":")
 						if (line(vcfanimals(indv))(0) != '.'){
+							val inherited = childPhase(phasVal,curAn)
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
-								kids += 1
-								val inherited = childPhase(phasVal,curAn)
-								if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
-								val parID = if (inherited == "S") ped._2.apply(0) else ped._2.apply(1)
+							
+							if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
+								val parID = if (inherited == "S") ped._2.apply(0) ; sirePhase += 1 else ped._2.apply(1); damPhase += 1
 									allChildren(indv) = parID
 									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${parID}" :: childHaps(indv)
-									//if (inherited == "S") sirePhase += 1 else damPhase += 1
 								}
+								
+							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
+								kids += 1
+								kidsPhase = allChildren(indv) :: kidsPhase
 							}
 						}
 						
@@ -609,6 +618,14 @@ println("Built Pedigrees\n")
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
 					
+					/*
+					* De novo Identification logic!
+					* Proband is Variant, has > min num of Alt alleles. DP is between minDP & maxDP
+					* Parental DP is good, variant not present in Ancestors, Parents & is present in at least
+					* minKids kids & min ratio between Ref & Alt is fine
+					* If recurring allowed don't check population otherwise not present in population
+					*/
+					
 					if (
 							(
 								(
@@ -628,7 +645,16 @@ println("Built Pedigrees\n")
 											 	if (reoccur){true}else{popFreq == 0}
 											 )
 							){
-						denovo = true
+						//denovo = true
+						
+						var phaseQual == ""
+
+						if (kidsPhase.exists(_ == ped._2.apply(0)) && kidsPhase.exists(_ == ped._2.apply(1))){
+							//Inconsistent Phase
+							phaseQual = "Bad " + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
+						} else {
+							phaseQual = "Good " + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
+						}
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
 							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
@@ -637,11 +663,11 @@ println("Built Pedigrees\n")
 							}
 						
 						if (reoccur && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${sirePhase}|${damPhase}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${sirePhase}|${damPhase}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
