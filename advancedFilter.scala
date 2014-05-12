@@ -468,10 +468,13 @@ println("Built Pedigrees\n")
 				var allChildrenState = ""
 				var parPos, grandPos, childPos, descPos, popRef, popALT, popPos, exfPos = 0
 				
+				val sire = ped._2.apply(0)
+				val dam = ped._2.apply(1)
+				
 			/* Parental Test using permutations of Alleles */
 
-				val par1 = line(vcfanimals(ped._2.apply(0))).split(":")
-				val par2 = line(vcfanimals(ped._2.apply(1))).split(":")
+				val par1 = line(vcfanimals(sire)).split(":")
+				val par2 = line(vcfanimals(dam)).split(":")
 				val proBand = line(vcfanimals(fam._1)).split(":")
 			if (isVar(proBand(GT))){
 
@@ -532,8 +535,7 @@ println("Built Pedigrees\n")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							
 							if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
-								val parID = if (inherited == "S") ped._2.apply(0) else ped._2.apply(1)
-								if (inherited == "S") sirePhase += 1 else damPhase += 1
+								val parID = if (inherited == "S") sire else dam
 									allChildren(indv) = parID
 									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${parID}" :: childHaps(indv)
 								}
@@ -543,7 +545,7 @@ println("Built Pedigrees\n")
 								kidsPhase = allChildren(indv) :: kidsPhase
 							}
 						}
-						
+						if (allChildren(indv) == sire) sirePhase += 1 else damPhase += 1
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(indv)}\t"
 					}
 
@@ -650,11 +652,11 @@ println("Built Pedigrees\n")
 						
 						var phaseQual = ""
 
-						if (kidsPhase.exists(_ == ped._2.apply(0)) && kidsPhase.exists(_ == ped._2.apply(1))){
+						if (kidsPhase.exists(_ == sire) && kidsPhase.exists(_ == dam)){
 							//Inconsistent Phase
-							phaseQual = "Bad\t" + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
+							phaseQual = "Bad\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
 						} else {
-							phaseQual = "Good\t" + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
+							phaseQual = "Good\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
 						}
 						
 						
@@ -686,7 +688,7 @@ println("Built Pedigrees\n")
 					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
-							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t\n" +
+							println(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" +
 							 proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
