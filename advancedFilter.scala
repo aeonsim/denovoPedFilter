@@ -662,11 +662,13 @@ println("Built Pedigrees\n")
 							}
 						}
 						
+						/*
 						if ((proRatio._1 + proRatio._2) <= minDP) {
 							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
 							proBand.foreach(er => errors.print(er + " "))
 							errors.print("\n")
 							}
+							*/
 						
 						if (reoccur && adratio == 0.0){
 							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
