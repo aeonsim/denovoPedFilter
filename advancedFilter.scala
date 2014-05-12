@@ -653,12 +653,14 @@ println("Built Pedigrees\n")
 						var phaseQual = ""
 
 						if (kidsPhase.exists(_ == sire) && kidsPhase.exists(_ == dam)){
-							//Inconsistent Phase
 							phaseQual = "Bad\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
 						} else {
-							phaseQual = "Good\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
+							if ((kidsPhase.exists(_ == sire) && (kidsPhase.count(_ == sire) != sirePhase)) || (kidsPhase.exists(_ == sire) && (kidsPhase.count(_ == dam) != damPhase))){
+								phaseQual = "Partial\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
+							} else {
+								phaseQual = "Good\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
+							}
 						}
-						
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
 							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
