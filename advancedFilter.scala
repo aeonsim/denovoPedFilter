@@ -421,7 +421,7 @@ println("Built Pedigrees\n")
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase S/D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
+	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
 	var lastChr = ""
 	while (in_vcf.ready){
 		PL = -1
@@ -651,9 +651,9 @@ println("Built Pedigrees\n")
 
 						if (kidsPhase.exists(_ == ped._2.apply(0)) && kidsPhase.exists(_ == ped._2.apply(1))){
 							//Inconsistent Phase
-							phaseQual = "Bad " + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
+							phaseQual = "Bad\t" + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
 						} else {
-							phaseQual = "Good " + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
+							phaseQual = "Good\t" + kidsPhase.count(_ == ped._2.apply(0)) + "|" + kidsPhase.count(_ == ped._2.apply(1)) + " " + sirePhase + "|" + damPhase
 						}
 						
 						if ((proRatio._1 + proRatio._2) <= minDP) {
