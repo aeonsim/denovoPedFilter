@@ -192,6 +192,18 @@ var PL = -1
 		}
 	}
 	
+	/* Check PL is sufficient, if no PL's then aways ok*/
+	
+	def checkPL(min: Int, indv: Array[String]): Boolean = {
+		if (PLexist){
+			val pls = indv(PL).split(",").sorted.tail
+			if (pls(0).toInt >= min) true 
+			else false
+		} else {
+			true
+		}	
+	}
+	
 	
 /* Phase Code, return format is (sireAllele,damAllele)*/
 
@@ -282,7 +294,7 @@ def main (args: Array[String]): Unit = {
 	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
 	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR").toUpperCase)) true else false
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
-	val PLGLS = if (settings.contains("PLGL")) settings("PLGL") else 0
+	val minPL = if (settings.contains("minPL")) settings("minPL") else 0
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
 	settings("TYPE").toUpperCase match {
@@ -532,15 +544,14 @@ println("Built Pedigrees\n")
 						val curAn = line(vcfanimals(indv)).split(":")
 						if (line(vcfanimals(indv))(0) != '.'){
 							val inherited = childPhase(phasVal,curAn)
-							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							
-							if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
+							val refAlt = selROvAD(curAn,AD, RO, AO, GT)							
+							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
+								if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
 								val parID = if (inherited == "S") sire else dam
 									allChildren(indv) = parID
 									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${parID}" :: childHaps(indv)
 								}
 								
-							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								kids += 1
 								kidsPhase = allChildren(indv) :: kidsPhase
 							}
