@@ -544,9 +544,11 @@ println("Built Pedigrees\n")
 						val curAn = line(vcfanimals(indv)).split(":")
 						if (line(vcfanimals(indv))(0) != '.'){
 							var inherited = ""
-							if (vcfanimals.contains(pedFile(indv).apply(2)) && vcfanimals.contains(pedFile(indv).apply(2))) {
-								val cSire = line(vcfanimals(pedFile(indv).apply(2))).split(":")
-								val cDam = line(vcfanimals(pedFile(indv).apply(3))).split(":")
+							val sire = pedFile(indv).apply(2)
+							val dam = pedFile(indv).apply(3)
+							if (vcfanimals.contains(sire) && vcfanimals.contains(dam) {
+								val cSire = line(vcfanimals(sire)).split(":")
+								val cDam = line(vcfanimals(dam)).split(":")
 								val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
 								if (fullPhase._1 != "x") { if (fullPhase._1 == "1") inherited = "S" else inherited = "D" }
 							} else {
