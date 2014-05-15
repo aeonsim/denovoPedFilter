@@ -549,8 +549,13 @@ println("Built Pedigrees\n")
 							if (vcfanimals.contains(sire) && vcfanimals.contains(dam)) {
 								val cSire = line(vcfanimals(sire)).split(":")
 								val cDam = line(vcfanimals(dam)).split(":")
-								val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
-								if (fullPhase._1 != "x") { if (fullPhase._1 == "1") inherited = "S" else inherited = "D" }
+								//val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
+								val fullPhase = phase(curAn,cSire, cDam)
+								if (fullPhase._1 != "x") { 
+								if (fullPhase._1 == "1") inherited = "S" else inherited = "D" 
+								} else {
+									inherited = "U"
+								}
 							} else {
 								inherited = childPhase(phasVal,curAn)
 							}
