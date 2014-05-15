@@ -208,6 +208,7 @@ var PL = -1
 /* Phase Code, return format is (sireAllele,damAllele)*/
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
+if (sire.size >= PL && dam.size >= PL && indv.size >= PL){
 	val minPLval = if (vcfType == "gatk") 40 else 5
 	val indvGT = indv(0)
 	val sireGT = sire(0)
@@ -242,7 +243,8 @@ if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt
 	}
 	
 	}
-	}else {("x","x")}
+	} else ("x","x")
+	} else ("x","x")
 
 }
 
@@ -547,8 +549,8 @@ println("Built Pedigrees\n")
 							if (vcfanimals.contains(sire) && vcfanimals.contains(dam)) {
 								val cSire = line(vcfanimals(sire)).split(":")
 								val cDam = line(vcfanimals(dam)).split(":")
-								val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
-								//val fullPhase = phase(curAn, cSire, cDam)
+								//val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
+								val fullPhase = phase(curAn, cSire, cDam)
 								if (fullPhase._1 != "x") { 
 								if (fullPhase._1 == "1") inherited = "S" else inherited = "D" 
 								} else {
