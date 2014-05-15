@@ -294,7 +294,7 @@ def main (args: Array[String]): Unit = {
 	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
 	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR").toUpperCase)) true else false
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
-	val minPL = if (settings.contains("minPL")) settings("minPL") else 0
+	val minPL = if (settings.contains("minPL")) settings("minPL").toInt else 0
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
 	settings("TYPE").toUpperCase match {
@@ -543,8 +543,16 @@ println("Built Pedigrees\n")
 					//for (indv <- ped._3){
 						val curAn = line(vcfanimals(indv)).split(":")
 						if (line(vcfanimals(indv))(0) != '.'){
-							val inherited = childPhase(phasVal,curAn)
-							val refAlt = selROvAD(curAn,AD, RO, AO, GT)							
+							var inherited = ""
+							if (vcfanimals.contains(pedFile(indv).apply(2)) && vcfanimals.contains(pedFile(indv).apply(2))) {
+								val cSire = line(vcfanimals(pedFile(indv).apply(2))).split(":")
+								val cDam = line(vcfanimals(pedFile(indv).apply(3))).split(":")
+								val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
+								if (fullPhase._1 != "x") { if (fullPhase._1 == "1") inherited = "S" else inherited = "D" }
+							} else {
+								inherited = childPhase(phasVal,curAn)
+							}
+							val refAlt = selROvAD(curAn,AD, RO, AO, GT)					
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
 								val parID = if (inherited == "S") sire else dam
@@ -649,7 +657,7 @@ println("Built Pedigrees\n")
 											
 												proRatio._2 >= (minALT * 3)
 											)
-										) 
+										) && checkPL(minPL, curPro) && checkPL(minPL, par1) && checkPL(minPL, par2)
 											&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
 											(ances == 0) && (par == 0) && (kids >= minKids) && 
 											(
