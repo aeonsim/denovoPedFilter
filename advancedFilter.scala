@@ -554,7 +554,7 @@ println("Built Pedigrees\n")
 								if (fullPhase._1 != "x") { 
 								if (fullPhase._1 == "1") inherited = "S" else inherited = "D" 
 								} else {
-									inherited = "U"
+								inherited = childPhase(phasVal,curAn)
 								}
 							} else {
 								inherited = childPhase(phasVal,curAn)
