@@ -552,9 +552,9 @@ println("Built Pedigrees\n")
 								//val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
 								val fullPhase = phase(curAn, cSire, cDam)
 								if (fullPhase._1 != "x") { 
-								if (fullPhase._1 == "1") inherited = "S" else inherited = "D" 
+								if (fullPhase._1 == phasVal._1) inherited = "S" else inherited = "D" 							
 								} else {
-								inherited = childPhase(phasVal,curAn)
+									inherited = childPhase(phasVal,curAn)
 								}
 							} else {
 								inherited = childPhase(phasVal,curAn)
