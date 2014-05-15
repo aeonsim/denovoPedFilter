@@ -546,9 +546,9 @@ println("Built Pedigrees\n")
 							var inherited = childPhase(phasVal,curAn)
 							val sireid = pedFile(indv).apply(2)
 							val damid = pedFile(indv).apply(3)
-							if (vcfanimals.contains(sire) && vcfanimals.contains(dam)) {
-								val cSire = line(vcfanimals(sire)).split(":")
-								val cDam = line(vcfanimals(dam)).split(":")
+							if (vcfanimals.contains(sireid) && vcfanimals.contains(damid)) {
+								val cSire = line(vcfanimals(sireid)).split(":")
+								val cDam = line(vcfanimals(damid)).split(":")
 								//val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
 								val fullPhase = phase(curAn, cSire, cDam)
 								if (fullPhase._1 != "x") { 
