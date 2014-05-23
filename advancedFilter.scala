@@ -435,8 +435,12 @@ println("Built Pedigrees\n")
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
 	var lastChr = ""
+	
+	/* Store Output data in List so can loop through after and fix phase */
+	var cndtDenovos : List[String] = Nil
+	var phaseBlocks = new HashMap[List[Tuple3[Int,Int,String]]]
+	
 	while (in_vcf.ready){
 		PL = -1
 		PLexist = false
@@ -697,17 +701,17 @@ println("Built Pedigrees\n")
 							*/
 						
 						if (reoccur && adratio == 0.0){
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								print("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
+								statsOut.write("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
 							}else {
-								print("\n")
+								statsOut.write("\n")
 							}//eelse
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}//eif reoccur
@@ -715,15 +719,14 @@ println("Built Pedigrees\n")
 					} //eif is Denovo
 					
 					
-					if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
+				/*	if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
 						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
 						&& proRatio._2 >= minALT && adratio == 0.0){
 							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" +
 							 proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\n")
 							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}
-					
-					
+						*/
 
 				}//eisVAR
 			} // IS VAR
@@ -738,17 +741,25 @@ println("Built Pedigrees\n")
 		errors.print(childOrigin.size + "\n")
 		val out = new BufferedWriter(new FileWriter(child._1 + "-origin.bed"))
 		var count = 1
-		var lastPos, lastChr, lastOrig = "" 
+		var lastPos, lastChr, lastOrig, startPos = "" 
 		while (count < childOrigin.size){
 			val cline = childOrigin(count).split("\t")
 			if (lastChr == ""){
 				lastChr = cline(0)
 				lastPos = cline(1)
 				lastOrig = cline(3)
+				startPos = cline(1)
 				out.write(s"${cline(0)}\t${cline(1)}\t")
 			}
 				if ((cline(3) != lastOrig) || (lastChr != cline(0))){
 					out.write(s"${lastPos}\t${lastOrig}\n")
+					if (phaseBlock.contains(child._1)){
+						phaseBlock(child._1) =  (startPos.toInt,lastPos.toInt,lastChr,lastOrig) :: phaseBlock(child._1)
+					} else {
+						phaseBlock += child._1 -> (startPos.toInt,lastPos.toInt,lastChr,lastOrig) :: Nil
+					}
+					
+					startPos = cline(1)
 					lastPos = cline(1)
 					lastChr = cline(0)
 					lastOrig = cline(3)
@@ -761,8 +772,9 @@ println("Built Pedigrees\n")
 
 		}
 		out.write(s"${lastPos}\t${lastOrig}\n")
-		//child._2.reverse.foreach(s => out.write(s + "\n"))
 		out.close
+	}
+	
 	}
 	
 }//eMain
