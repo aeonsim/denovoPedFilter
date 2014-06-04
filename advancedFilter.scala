@@ -196,8 +196,8 @@ var PL = -1
 	
 	def checkPL(min: Int, indv: Array[String]): Boolean = {
 		if (PLexist){
-			val pls = indv(PL).split(",").sorted.tail
-			if (pls(0).toInt >= min) true 
+			val pls = indv(PL).split(",").map(num => scala.math.abs(num.toFloat)).sorted.tail
+			if (pls(0) >= min) true 
 			else false
 		} else {
 			true
@@ -213,10 +213,10 @@ if (sire.size >= PL && dam.size >= PL && indv.size >= PL){
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT = dam(0)
-	val indvPL = indv(PL).split(",").sorted.tail
-	val sirePL = sire(PL).split(",").sorted.tail
-	val damPL = dam(PL).split(",").sorted.tail
-if (indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toInt >= minPLval){
+	val indvPL = indv(PL).split(",").map(num => scala.math.abs(num.toFloat)).sorted.tail
+	val sirePL = sire(PL).split(",").map(num => scala.math.abs(num.toFloat)).sorted.tail
+	val damPL = dam(PL).split(",").map(num => scala.math.abs(num.toFloat)).sorted.tail
+if (indvPL(0) >= minPLval && sirePL(0) >= minPLval && damPL(0) >= minPLval){
 	if(sireGT == "0/0" && damGT == "1/1" && (indvGT == "0/1" || indvGT == "1/0")){
 		("0","1")
 	} else {
@@ -259,7 +259,7 @@ def advPhase(curPhase: Tuple2[String,String], child: Array[String], family: Arra
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	val childGT = child(0)
 	val minPLval = if (vcfType == "gatk") 40 else 5
-	val childPL = child(PL).split(",").sorted.tail
+	val childPL = child(PL).split(",").map(num => scala.math.abs(num.toFloat)).sorted.tail
 	if ((curPhase._1 != "x") && (! childPL.exists(_.toInt <= minPLval)) && (childGT == "1/1" || childGT == "0/0")){
 		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
 		} else {
@@ -281,7 +281,7 @@ def main (args: Array[String]): Unit = {
 	
 
 	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS")) & (! settings.contains("TYPE")) & (! settings.contains("OUT"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt OUT=denovo-stats.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt OUT=denovo-stats.txt type=gatk,plat,fb { minDP=0 minALT=0 RECUR=F/T minKIDS=1 minPL=0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -296,9 +296,10 @@ def main (args: Array[String]): Unit = {
 	val minALT = if (settings.contains("MINALT")) settings("MINALT").toInt else 0
 	val reoccur = if (settings.contains("RECUR") && List("TRUE","YES","Y","T").contains(settings("RECUR").toUpperCase)) true else false
 	val QUAL = if (settings.contains("QUAL")) settings("QUAL").toInt else 0
-	val minPL = if (settings.contains("minPL")) settings("minPL").toInt else 0
+	val minPL = if (settings.contains("MINPL")) settings("MINPL").toInt else 0
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
+	val debug = if (settings.contains("DEBUG")) true else false
 	settings("TYPE").toUpperCase match {
 		case "GATK" => vcfType = "gatk"
 		case "PLAT" => vcfType = "platypus"
@@ -396,7 +397,7 @@ def main (args: Array[String]): Unit = {
 			
 			population = animalIDS.toList.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || descendents.contains(x) || parents.contains(x)|| (! vcfanimals.contains(x))))
 			
-			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size != 0){
+			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size >= minKids){
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 				for (child <- children) {
 				allChildren += child -> ""
@@ -414,19 +415,19 @@ println("Built Pedigrees\n")
 /* Report identified Trios & there Pedigree Structure*/
 
 	for (fam <- trios){
-		println(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}\n")
+		println(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}")
 		println("Grandparents\t")
 		fam._2._1.foreach(s => println(s + "\t"))
-		println(fam._2._1.size + "\n")
+		println(fam._2._1.size)
 		println("Children\t")		
 		fam._2._3.foreach(s => println(s + "\t"))
-		println(fam._2._3.size + "\n")
+		println(fam._2._3.size)
 		println("Descendents\t")
 		fam._2._4.foreach(s => println(s + "\t"))
 		println(fam._2._4.size + "\n")
 		println("EXFAM\t")
 		fam._2._7.foreach(s => println(s + "\t"))
-		println(fam._2._7.size + "\n\n")
+		println(fam._2._7.size)
 		lastPhase += fam._1 -> ("u","u")
 		childState += fam._1 -> ""
 	}
@@ -435,7 +436,7 @@ println("Built Pedigrees\n")
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
+	print(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
 	var lastChr = ""
 	while (in_vcf.ready){
 		PL = -1
@@ -456,7 +457,7 @@ println("Built Pedigrees\n")
 		
 		AD = format.indexOf("AD")
 		GT = format.indexOf("GT")
-		DP = format.indexOf("DP")
+		DP = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("DP")
 		AO = if (format.contains("NV")) format.indexOf("NV") else format.indexOf("AO")
 		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
 				
@@ -598,7 +599,7 @@ println("Built Pedigrees\n")
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							if ((isVar(curAn(GT)) || sigAD(refAlt._2)) && checkDP(curAn,DP,minDP,maxDP)){
+							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								popRef += refAlt._1
 								popALT += refAlt._2
 								val curIndv = pedFile(indv)
@@ -647,6 +648,13 @@ println("Built Pedigrees\n")
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
 					
+					if (debug && popFreq == 0 & par == 0) {
+					proBand.foreach(s => print(s"${s} "))
+					 print("\n")
+					 print(s"GT ${!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))} ALTGood(${proRatio._2 >= minALT} ${proRatio._2 == -1}) PL${checkPL(minPL, curPro)} SPL${checkPL(minPL, par1)} DPL${checkPL(minPL, par2)}\n")
+					 print(s"DP${checkDP(curPro, DP, minDP, maxDP)}  SDP${checkDP(par1, DP, minDP, maxDP)} DDP${checkDP(par2, DP, minDP, maxDP)} AN${ances == 0} PAR${par == 0} KID${kids >= minKids} RATIO${(proRatio._2/proRatio._1.toFloat) >= minRAFreq} pop${popFreq} \n")
+					 }
+					 
 					/*
 					* De novo Identification logic!
 					* Proband is Variant, has > min num of Alt alleles. DP is between minDP & maxDP
@@ -705,7 +713,7 @@ println("Built Pedigrees\n")
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								print("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
+								print(s"\t WARNING: Low confidence de novo\t${allChildrenState}\n")
 							}else {
 								print("\n")
 							}//eelse
