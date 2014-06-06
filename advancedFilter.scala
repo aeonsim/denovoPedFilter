@@ -13,23 +13,54 @@ class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
 	
 	def getPhase(chrom: String, position: Int) : String ={
 		//println(phaseData(curPhaseBlock)._1  + " " + chrom)
-		while (phaseData(curPhaseBlock)._1 != chrom) curPhaseBlock += 1
-		val nextPhaseBlock = curPhaseBlock + 1
-		if (position < phaseData(curPhaseBlock)._2){
-			"BOTH"
-		} else if  (position >= phaseData(curPhaseBlock)._2   & position <= phaseData(curPhaseBlock)._3 ) {
-			println(phaseData(curPhaseBlock)._4 + " " + position + " START " + phaseData(curPhaseBlock)._2 + " END " +  phaseData(curPhaseBlock)._3 + " " + curPhaseBlock + " " + phaseData.size)
-			return phaseData(curPhaseBlock)._4
-		} else {
-			if (nextPhaseBlock < phaseData.size && position > phaseData(curPhaseBlock)._3 & position < phaseData(nextPhaseBlock)._3) {
-				"BOTH"
-			} else {
-				curPhaseBlock += 1
-				if (curPhaseBlock < phaseData.size)	getPhase(chrom, position) else "BOTH"
-			}
-			
+		 while (phaseData(curPhaseBlock)._1 != chrom) {
+			curPhaseBlock += 1
+			println("looping through Chrs")
 		}
+		val nextPhaseBlock = curPhaseBlock + 1
+		val curStart = phaseData(curPhaseBlock)._2
+		val curEnd = phaseData(curPhaseBlock)._3
 		
+		if (nextPhaseBlock < phaseData.size){
+			val nextStart = phaseData(nextPhaseBlock)._2
+			val nextEnd = phaseData(nextPhaseBlock)._3
+			val nextChrom = phaseData(nextPhaseBlock)._1
+			
+			if (position <= curEnd && position >= curStart){
+				return phaseData(curPhaseBlock)._4
+			} else {
+				if (position < curStart) {
+					return "BOTH"
+				} else {
+					if (position > curEnd && position < nextStart){
+						return "BOTH"
+					} else {
+						if (position <= nextEnd && position >= nextStart){
+							curPhaseBlock += 1
+							return phaseData(curPhaseBlock)._4
+						} else {
+							if (position > nextEnd && nextChrom == chrom){
+								curPhaseBlock += 1
+								getPhase(chrom, position)
+							} else {
+								//curPhaseBlock += 1
+								return "BOTH"
+							}
+						}
+					}
+				}				
+			}
+		} else {
+			if (position < curStart){
+				return "BOTH"
+			} else {
+				if (position <= curEnd & position >= curStart){
+					return phaseData(curPhaseBlock)._4
+				} else {
+					return "BOTH"
+				}
+			}
+		}
 	}
 }
 
@@ -565,7 +596,10 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
+	statsOut.write(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
 	var lastChr = ""
+	
+	System.err.println("Phasing Complete, beginning De Novo identification & Characterisation")
 	
 	/* Store Output data in List so can loop through after and fix phase */
 	while (in_vcf.ready){
@@ -707,7 +741,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 								allChildren(indv) match {
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
-									case "BOTH" => sirePhase += 0.01 ; damPhase += 0.01
+									case "BOTH" => varSirePhase += 0.01 ; varDamPhase += 0.01
 									case _ => println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n\n############")
 								}
 								//kidsPhase = allChildren(indv) :: kidsPhase
@@ -766,7 +800,6 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							}	
 						}
 					}
-
 					
 			/* Extended family Calc */
 
@@ -796,7 +829,15 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
 					
-					println("Parents " + par + "Ancestors " + ances + " Kids " + kids + " Desc " + desc " Pop " + popFreq)
+					//println("Parents " + par + "Ancestors " + ances + " Kids " + kids + " Desc " + desc + " Pop " + popFreq)
+					val debug = false
+					
+					if (debug && popFreq == 0 & par == 0) {
+					proBand.foreach(s => print(s"${s} "))
+					 print("\n")
+					 print(s"GT ${!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))} ALTGood(${proRatio._2 >= minALT} ${proRatio._2 == -1}) PL${checkPL(minPL, curPro)} SPL${checkPL(minPL, par1)} DPL${checkPL(minPL, par2)}\n")
+					 print(s"DP${checkDP(curPro, DP, minDP, maxDP)}  SDP${checkDP(par1, DP, minDP, maxDP)} DDP${checkDP(par2, DP, minDP, maxDP)} AN${ances == 0} PAR${par == 0} KID${kids >= minKids} RATIO${(proRatio._2/proRatio._1.toFloat) >= minRAFreq} pop${popFreq} \n")
+					 }
 					
 					/*
 					* De novo Identification logic!
@@ -807,24 +848,23 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					*/
 					
 					if (
+						(
 							(
-								(
-									!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)
-								) && 	(
-										proRatio._2 >= minALT || proRatio._2 == -1) || 
-											
-												proRatio._2 >= (minALT * 3)
-											)
+								!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)
+									) && (
+											proRatio._2 >= minALT || proRatio._2 == -1) ||
+											proRatio._2 >= (minALT * 3)
+										)
 										) && checkPL(minPL, curPro) && checkPL(minPL, par1) && checkPL(minPL, par2)
-											&& checkDP(curPro, DP, minDP, maxDP) &&  checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
-											(ances == 0) && (par == 0) && (kids >= minKids) && 
-											(
-											 	(proRatio._2/proRatio._1.toFloat) >= minRAFreq
-											 ) && 
-											 (
-											 	if (reoccur){true}else{popFreq == 0}
-											 )
-							){
+											&& checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP) &&
+												(ances == 0) && (par == 0) && (kids >= minKids) &&
+												(
+													(proRatio._2/proRatio._1.toFloat) >= minRAFreq
+													) &&
+														(
+															if (reoccur){true}else{popFreq == 0}
+															)
+						){
 						//denovo = true
 						
 						var phaseQual = ""
