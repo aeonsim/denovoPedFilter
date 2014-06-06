@@ -18,10 +18,10 @@ class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
 		if (position < phaseData(curPhaseBlock)._2){
 			"BOTH"
 		} else if  (position >= phaseData(curPhaseBlock)._2   & position <= phaseData(curPhaseBlock)._3 ) {
-			//println(phaseData(curPhaseBlock)._4 + " " + position)
+			println(phaseData(curPhaseBlock)._4 + " " + position + " START " + phaseData(curPhaseBlock)._2 + " END " +  phaseData(curPhaseBlock)._3 + " " + curPhaseBlock + " " + phaseData.size)
 			return phaseData(curPhaseBlock)._4
 		} else {
-			if (position > phaseData(curPhaseBlock)._3 & position < phaseData(nextPhaseBlock)._3) {
+			if (nextPhaseBlock < phaseData.size && position > phaseData(curPhaseBlock)._3 & position < phaseData(nextPhaseBlock)._3) {
 				"BOTH"
 			} else {
 				curPhaseBlock += 1
@@ -666,7 +666,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					if (proBand(GT)(0) != '.' && grands.contains(proBand(GT)(0)) && grands.contains(proBand(GT)(1))){
 						ances += 1
 					}
-
+					
 			//Children
 			var varSirePhase, varDamPhase = 0.0
 				while(childPos < ped._3.size){
@@ -736,7 +736,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							}
 						}
 					}
-
+					
 			/* Population Calc */
 					
 					while (popPos < ped._6.size){
@@ -766,6 +766,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							}	
 						}
 					}
+
 					
 			/* Extended family Calc */
 
@@ -794,6 +795,8 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					
 					val proRatio = selROvAD(proBand,AD, RO, AO, GT)
 					val proGT = proBand(GT)
+					
+					println("Parents " + par + "Ancestors " + ances + " Kids " + kids + " Desc " + desc " Pop " + popFreq)
 					
 					/*
 					* De novo Identification logic!
