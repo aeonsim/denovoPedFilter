@@ -13,9 +13,16 @@ class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
 	
 	def getPhase(chrom: String, position: Int) : String ={
 		//println(phaseData(curPhaseBlock)._1  + " " + chrom)
-		 while (phaseData(curPhaseBlock)._1 != chrom) {
-			curPhaseBlock += 1
-			println("looping through Chrs")
+		
+		 if (phaseData(curPhaseBlock)._1 != chrom) {
+		 	val chr = if (chrom(0).toString.toUpperCase == "C") chrom.substring(3,chrom.size) else chrom
+		 	val chrnum = if (chr.toUpperCase == "X") 999 else if (List("M","MT").contains(chr.toUpperCase)) 1000 else chr.toInt
+		 	while (phaseData(curPhaseBlock)._1 != chrom){
+				val bchr = if( phaseData(curPhaseBlock)._1(0).toString.toUpperCase == "C" ) phaseData(curPhaseBlock)._1.substring(3, phaseData(curPhaseBlock)._1.size) else  phaseData(curPhaseBlock)._1
+				val bchrnum = if (bchr.toUpperCase == "X") 999 else if (List("M","MT").contains(bchr.toUpperCase)) 1000 else bchr.toInt
+				if (chrnum >= bchrnum ) curPhaseBlock += 1 else curPhaseBlock -= 1
+				System.err.println("looping through Chrs currently " + phaseData(curPhaseBlock)._1 + " Going to " + chrom )
+			}
 		}
 		val nextPhaseBlock = curPhaseBlock + 1
 		val curStart = phaseData(curPhaseBlock)._2
@@ -241,12 +248,17 @@ var PL = -1
 /* Take a Genotype String and check against DP limits*/
 
 	def checkDP (genos: Array[String], DPpos: Int, minDP: Int, maxDP: Int): Boolean = {
-		if (genos.size >= 2 && DPpos != -1 && genos(DPpos) != "."){
+		try{
+		if (DPpos != -1 && genos.size > DPpos  && genos(DPpos) != "."){
 			val curDP = if (vcfType == "platypus") genos(DPpos).split(",")(0).toInt else genos(DPpos).toInt
 			if (curDP >= minDP && curDP <= maxDP) true
 			else false
 		} else {
 			false
+		}
+		} catch {
+			 case e: Exception => System.err.println(e + " DPpos " + DPpos + " Geno " + genos.reduceLeft{(a,b) => a + ":" + b})
+			 false
 		}
 	}
 	
@@ -278,30 +290,30 @@ if ((indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toIn
 	if(sireGT == "0/0" && damGT == "1/1" && (indvGT == "0/1" || indvGT == "1/0")){
 		("0","1")
 	} else {
-	 if (sireGT == "1/1" && damGT == "0/0" && (indvGT == "0/1" || indvGT == "1/0")){
-	 	("1","0")
-	 } else {
-		if(sireGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && damGT == "0/0") {
-			("1","0")
-		} else {
-				if(sireGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && damGT == "1/1") {
-					("0","1")
+	 	if (sireGT == "1/1" && damGT == "0/0" && (indvGT == "0/1" || indvGT == "1/0")){
+	 		("1","0")
+	 		} else {
+				if(sireGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && damGT == "0/0") {
+					("1","0")
 				} else {
+					if(sireGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && damGT == "1/1") {
+						("0","1")
+					} else {
 						if (damGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && sireGT == "0/0" ) {
 							("0","1")
 						} else {
 							if (damGT == "0/1" && (indvGT == "0/1" || indvGT == "1/0") && sireGT == "1/1") {
 								("1","0")
 							} else {
-							("x","x")
+								("x","x")
+								}
 							}
-					}
-			}
-		}		
-	}
+						}
+					}		
+				}
 	
-	}
-	} else ("x","x")
+			}
+		} else ("x","x")
 	} else ("x","x")
 
 }
@@ -400,7 +412,7 @@ def main (args: Array[String]): Unit = {
 	}
 
 	out_vcf.write(s"##${args.reduceLeft{(a,b) => a + " " + b}}\n")
-	out_somatic.write(s"##${args.reduceLeft{(a,b) => a + " " + b}}\n")
+	//out_somatic.write(s"##${args.reduceLeft{(a,b) => a + " " + b}}\n")
 
 	if (vcfrec(0).apply(0) == '#' && vcfrec(0).apply(1) == 'C'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
@@ -596,7 +608,8 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	statsOut.write(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
+	//statsOut.write(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
+	println(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo")
 	var lastChr = ""
 	
 	System.err.println("Phasing Complete, beginning De Novo identification & Characterisation")
@@ -708,7 +721,8 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					childPos += 1
 					//for (indv <- ped._3){
 						val curAn = line(vcfanimals(indv)).split(":")
-						if (line(vcfanimals(indv))(0) != '.'){
+						//if (line(vcfanimals(indv))(0) != '.'){
+						if(curAn(0).apply(0) != '.'){	
 							/* Remove Phase code belongs in own prePhase block now
 							//var inherited = childPhase(phasVal,curAn)
 							val sireid = pedFile(indv).apply(2)
@@ -727,9 +741,10 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 								inherited = childPhase(phasVal,curAn)
 							}
 							*/
-							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
-							allChildren(indv) = phaseTracking(indv).getPhase(line(0),line(1).toInt)	// Maybe should be in isVar test?				
+							val refAlt = selROvAD(curAn,AD, RO, AO, GT)			
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
+							allChildren(indv) = phaseTracking(indv).getPhase(line(0),line(1).toInt)	// Maybe should be in isVar test?	
+							
 								/* More Phase Code
 								if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
 								val parID = if (inherited == "S") sire else dam
@@ -742,7 +757,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
 									case "BOTH" => varSirePhase += 0.01 ; varDamPhase += 0.01
-									case _ => println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n\n############")
+									case _ => System.err.println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 								}
 								//kidsPhase = allChildren(indv) :: kidsPhase
 							}
@@ -751,7 +766,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							case `sire` => sirePhase += 1
 							case `dam` => damPhase += 1
 							case "BOTH" => sirePhase += 0.01 ; damPhase += 0.01
-							case _ => println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n\n############")
+							case _ => System.err.println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 						}
 						//if (allChildren(indv) == sire) sirePhase += 1 else damPhase += 1
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(indv)}\t"
@@ -900,17 +915,18 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							*/
 						
 						if (reoccur && adratio == 0.0){
-							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							statsOut.write(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
-								statsOut.write("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
+								print("\t WARNING: Low confidence de novo\t${allChildrenState}\n")
 							}else {
-								statsOut.write("\n")
+								//statsOut.write("\n")
+								print("\n")
 							}//eelse
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}//eif reoccur
