@@ -89,9 +89,9 @@ var PL = -1
 */
 
 
-	def itPed (pop: HashMap[String, Array[String]] , rec: String): List[String] = {
-		if (pop.contains(rec)){
-			return rec :: itPed(pop,pop(rec).apply(2)) ::: itPed(pop,pop(rec).apply(3))
+	def itPed (pop: HashMap[String, Array[String]] , rec: String, maxIT: Int): List[String] = {
+		if (pop.contains(rec) && maxIT >= 0){
+			return rec :: itPed(pop,pop(rec).apply(2),maxIt -1) ::: itPed(pop,pop(rec).apply(3),maxIt -1)
 		} else {
 			return Nil
 		}
@@ -446,10 +446,10 @@ def main (args: Array[String]): Unit = {
 		extFam = Nil
 		if (pedFile.contains(curPro(0)) && animalIDS.contains(curPro(0))){
 			parents = List(pedFile(curPro(0))(2),pedFile(curPro(0))(3))
-			ancestors = itPed(pedFile,curPro(0)).tail.filterNot(x => parents.contains(x) || (! vcfanimals.contains(x)))
+			ancestors = itPed(pedFile,curPro(0),2).tail.filterNot(x => parents.contains(x) || (! vcfanimals.contains(x)))
 			children = findChildren(pedFile,vcfanimals,curPro(0))
 			for (indv <- animalIDS.toList){ //.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))){
-				val tempPed = itPed(pedFile,indv)
+				val tempPed = itPed(pedFile,indv,99)
 				if (tempPed.contains(curPro(0))){
 					descendents = indv :: descendents
 				}
