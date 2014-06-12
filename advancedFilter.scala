@@ -26,7 +26,7 @@ var PL = -1
 
 	def itPed (pop: HashMap[String, Array[String]] , rec: String, maxIT: Int): List[String] = {
 		if (pop.contains(rec) && maxIT >= 0){
-			return rec :: itPed(pop,pop(rec).apply(2),maxIt -1) ::: itPed(pop,pop(rec).apply(3),maxIt -1)
+			return rec :: itPed(pop,pop(rec).apply(2),maxIT -1) ::: itPed(pop,pop(rec).apply(3),maxIT -1)
 		} else {
 			return Nil
 		}
