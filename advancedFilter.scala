@@ -12,7 +12,7 @@ class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
 	var curPhaseBlock = 0
 	
 	def getPhase(chrom: String, position: Int) : String ={
-		//println(phaseData(curPhaseBlock)._1  + " " + chrom)
+		println("Block " + phaseData(curPhaseBlock)._1 + " "  + phaseData(curPhaseBlock)._2 + " " + phaseData(curPhaseBlock)._3 + " " + phaseData(curPhaseBlock)._4 + " Looking For:" + chrom + " " + position)
 		
 		 if (phaseData(curPhaseBlock)._1 != chrom) {
 		 	val chr = if (chrom(0).toString.toUpperCase == "C") chrom.substring(3,chrom.size) else chrom
@@ -61,7 +61,7 @@ class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
 			if (position < curStart){
 				return "BOTH"
 			} else {
-				if (position <= curEnd & position >= curStart){
+				if (position <= curEnd && position >= curStart){
 					return phaseData(curPhaseBlock)._4
 				} else {
 					return "BOTH"
@@ -91,7 +91,7 @@ var PL = -1
 
 	def itPed (pop: HashMap[String, Array[String]] , rec: String, maxIT: Int): List[String] = {
 		if (pop.contains(rec) && maxIT >= 0){
-			return rec :: itPed(pop,pop(rec).apply(2),maxIt -1) ::: itPed(pop,pop(rec).apply(3),maxIt -1)
+			return rec :: itPed(pop,pop(rec).apply(2),maxIT -1) ::: itPed(pop,pop(rec).apply(3),maxIT -1)
 		} else {
 			return Nil
 		}
@@ -348,7 +348,7 @@ def main (args: Array[String]): Unit = {
 	}
 	
 
-	if ((! settings.contains("VCF")) && (! settings.contains("PED")) & (! settings.contains("TRIOS")) & (! settings.contains("TYPE")) & (! settings.contains("OUT"))) {
+	if ((! settings.contains("VCF")) && (! settings.contains("PED")) && (! settings.contains("TRIOS")) && (! settings.contains("TYPE")) && (! settings.contains("OUT"))) {
 		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt OUT=denovo-stats.txt type=gatk,plat,fb { phaseVCF=SNPChip.vcf.gz minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
@@ -450,7 +450,7 @@ def main (args: Array[String]): Unit = {
 			children = findChildren(pedFile,vcfanimals,curPro(0))
 			for (indv <- animalIDS.toList){ //.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))){
 				val tempPed = itPed(pedFile,indv,99)
-				if (tempPed.contains(curPro(0))){
+				if (tempPed.contains(parents(0)) || tempPed.contains(parents(1))){
 					descendents = indv :: descendents
 				}
 				if (pedFile.contains(indv) && ( pedFile(indv)(2) == parents(0) || pedFile(indv)(3) == parents(0) )  && pedFile(indv)(1) != curPro(0)){
@@ -504,10 +504,8 @@ println("Built Pedigrees\n")
 */
 
 var phaseTracking = new HashMap[String, phaseTracker]
-
-//var cndtDenovos : List[String] = Nil // toremove
+var readDepths = new HashMap[String,Array[Int]]
 var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
-//var phasedIndv = new HashMap[String,Int] //replace with vcfanimals
 var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 
 	val phaseInfo = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(settings("VCF")))))
@@ -515,8 +513,16 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 	var phaseLine = phaseInfo.readLine.split("\t")
 	while (phaseLine(0).apply(1) == '#') phaseLine = phaseInfo.readLine.split("\t")
 	for (col <- 9 to (phaseLine.size -1)){
-	//	phasedIndv += phaseLine(col) -> col
+		readDepths += phaseLine(col) -> new Array[Int](52)
 		phaseBlock += phaseLine(col) -> Nil
+	}
+	
+	for (fam <- trios){
+	/* Record Sites that are decent in Trio */
+		readDepths += s"Trio_${fam._1}" -> new Array[Int](4)
+		for (kid <- fam._2._3){
+			tmpPhase += kid -> (("",0,"") :: Nil)
+		} 
 	}
 	
 	while(phaseInfo.ready){
@@ -531,8 +537,8 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 		}
 		
 		
-		for (fam <- trios.toArray){
-			//Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
+		for (fam <- trios.par){
+			/* Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam) */
 			val family = fam._2
 			val maxDP = (family._5 * 1.7).toInt
 			val GT = phaseLine(8).split(":").indexOf("GT")
@@ -540,11 +546,31 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 				val sire = phaseLine(vcfanimals(family._2(0))).split(":")
 				val dam = phaseLine(vcfanimals(family._2(1))).split(":")
 				
-				/* Phase Trio at Site */
-				val phaseVal = if (checkDP(proband, DP, minDP, maxDP) && checkDP(sire,DP,minDP,maxDP) && checkDP(dam,DP,minDP,maxDP)) phase(proband, sire, dam) else ("x","x")
-				for (kid <- family._3){
+				//println("pro" + proband.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
+				val pDP = if (proband.size > DP && proband(DP) != ".") proband(DP).toInt else 0
+				//println("sire" + sire.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
+				val sDP = if (sire.size > DP && sire(DP) != ".") sire(DP).toInt else 0
+				//println("dam" + dam.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
+				val dDP = if (dam.size > DP && dam(DP) != ".") dam(DP).toInt else 0
 				
+				if (pDP >= 51) readDepths(fam._1)(51) += 1 else readDepths(fam._1)(pDP) += 1
+				if (sDP >= 51) readDepths(family._2(0))(51) += 1 else readDepths(family._2(0))(sDP) += 1
+				if (dDP >= 51) readDepths(family._2(1))(51) += 1 else readDepths(family._2(1))(dDP) += 1
+								
+				/* Phase Trio at Site 0 = Good Autozome, 1 = bad Autozome, 2 = Good X, 3 = Bad X */
+				val phaseVal = if (checkDP(proband, DP, minDP, maxDP) && checkDP(sire,DP,minDP,maxDP) && checkDP(dam,DP,minDP,maxDP)) {
+						if (proband(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(0) += 1 else readDepths(s"Trio_${fam._1}")(2) += 1 
+						phase(proband, sire, dam) 
+					} else { 
+						if (proband(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(1) += 1 else readDepths(s"Trio_${fam._1}")(3) += 1 
+						("x","x")
+					}
+						
+				for (kid <- family._3){
 					var curKid = phaseLine(vcfanimals(kid)).split(":")
+					//println(curKid.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
+					val kidDP = if (curKid.size > DP && curKid(DP) != ".") curKid(DP).toInt else 0
+					if (kidDP >= 51) readDepths(kid)(51) += 1 else readDepths(kid)(kidDP) += 1
 					
 					var inherited = childPhase(phaseVal,curKid)
 					val sireid = pedFile(kid).apply(2)
@@ -563,17 +589,39 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					
 					if (inherited != "U") {
 						val parID = if (inherited == "S") family._2(0) else family._2(1)
-						if (tmpPhase.contains(kid)) tmpPhase(kid) =  (phaseLine(0),phaseLine(1).toInt,parID) :: tmpPhase(kid) else tmpPhase += kid -> ((phaseLine(0),phaseLine(1).toInt,parID) :: Nil)
+						tmpPhase(kid) =  (phaseLine(0),phaseLine(1).toInt,parID) :: tmpPhase(kid)
 					}
 				}
 		}
 	} //While Phasing
 	
+	for (fam <- trios.par){
+		for (kid <- fam._2._3){
+			tmpPhase(kid) = tmpPhase(kid).reverse.tail
+		} 
+	}
+	
 	phaseInfo.close
+	
+	for (indv <- readDepths){
+		val out = new BufferedWriter(new FileWriter(indv._1 + "-depths.txt"))
+		if (indv._2.size > 5){
+			val sum = indv._2.sum
+			for (num <- 0 to 51){
+				out.write(s"${num}\t${indv._2(num)}\t${indv._2(num)/sum.toFloat * 100}\n")
+			}
+		} else {
+			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1)) * 100}\n")
+			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1)) * 100}\n")
+			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3)) * 100}\n")
+			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3)) * 100}\n")
+		}
+		out.close
+	}
 	
 		for (child <- tmpPhase.par){
 			val out = new BufferedWriter(new FileWriter(child._1 + "-origin.bed"))	
-			val childOrigin = child._2.reverse.toArray
+			val childOrigin = child._2.toArray
 			
 			var count = 0			
 			var chrom = childOrigin(count)._1
@@ -603,6 +651,11 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 			
 			phaseTracking += child._1 -> new phaseTracker(phaseBlock(child._1).reverse.toArray)
 		}
+
+readDepths = new HashMap[String,Array[Int]]
+phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
+tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
+
 
 /*
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
@@ -847,7 +900,7 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					//println("Parents " + par + "Ancestors " + ances + " Kids " + kids + " Desc " + desc + " Pop " + popFreq)
 					val debug = false
 					
-					if (debug && popFreq == 0 & par == 0) {
+					if (debug && popFreq == 0 && par == 0) {
 					proBand.foreach(s => print(s"${s} "))
 					 print("\n")
 					 print(s"GT ${!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))} ALTGood(${proRatio._2 >= minALT} ${proRatio._2 == -1}) PL${checkPL(minPL, curPro)} SPL${checkPL(minPL, par1)} DPL${checkPL(minPL, par2)}\n")
@@ -884,10 +937,10 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 						
 						var phaseQual = ""
 						
-						if (varSirePhase >= 1 & varDamPhase >= 1){
+						if (varSirePhase >= 1 && varDamPhase >= 1){
 							phaseQual = "Bad\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
 						} else {
-							if ((varSirePhase > 0 & varSirePhase != sirePhase) || (varDamPhase > 0 & varDamPhase != damPhase)){
+							if ((varSirePhase > 0 && varSirePhase != sirePhase) || (varDamPhase > 0 & varDamPhase != damPhase)){
 								phaseQual = "Partial\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
 							} else {
 								phaseQual = "Good\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
@@ -915,11 +968,11 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							*/
 						
 						if (reoccur && adratio == 0.0){
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/(proRatio._1.toFloat + proRatio._2)}\t${rank}\tdenovo\t" + 
 								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tdenovo\t" + 
+							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/(proRatio._1.toFloat + proRatio._2)}\t${rank}\tdenovo\t" + 
 							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
 							if (adratio != 0.0) {
 								line(6) = "LOWQUAL_ADratio"
