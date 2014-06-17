@@ -48,6 +48,7 @@ class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
 						} else {
 							if (position > nextEnd && nextChrom == chrom){
 								curPhaseBlock += 1
+								println("FWD Block")
 								getPhase(chrom, position)
 							} else {
 								//curPhaseBlock += 1
@@ -399,7 +400,7 @@ def main (args: Array[String]): Unit = {
 	var lastPhase = new HashMap[String,Tuple2[String,String]]
 	var childState = new HashMap[String,String]
 	var allChildren = new HashMap[String,String]
-	var childHaps = new HashMap[String, List[String]]
+	//var childHaps = new HashMap[String, List[String]]
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
 */
@@ -468,7 +469,7 @@ def main (args: Array[String]): Unit = {
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 				for (child <- children) {
 				allChildren += child -> ""
-				childHaps += child ->  ("chr1\t1\t1\tU" :: Nil)
+				//childHaps += child ->  ("chr1\t1\t1\tU" :: Nil)
 				}
 			}
 		}//eif
@@ -517,8 +518,9 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 		phaseBlock += phaseLine(col) -> Nil
 	}
 	
-	var rawOutput = new HashMap[String,BufferedWriter]
+	/* Will output RAW data to disk rather than trying to store in memory */
 	
+	var rawOutput = new HashMap[String,BufferedWriter]
 	for (fam <- trios){
 	/* Record Sites that are decent in Trio */
 		readDepths += s"Trio_${fam._1}" -> new Array[Int](4)
@@ -533,6 +535,7 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 		phaseLine = phaseInfo.readLine.split("\t")
 	
 		val format = phaseLine(8).split(":")
+		val GT = format.indexOf("GT")
 		DP = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("DP")
 		if (format.contains("PL") || format.contains("GL")){
 			PL = if (format.contains("PL")) format.indexOf("PL") else format.indexOf("GL")
@@ -543,14 +546,16 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 			/* Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam) */
 			val family = fam._2
 			val maxDP = (family._5 * 1.7).toInt
-			val GT = phaseLine(8).split(":").indexOf("GT")
 				val proband = phaseLine(vcfanimals(fam._1)).split(":")
 				val sire = phaseLine(vcfanimals(family._2(0))).split(":")
 				val dam = phaseLine(vcfanimals(family._2(1))).split(":")
 				
-				val pDP = if (proband.size > DP && proband(DP) != ".") proband(DP).toInt else 0
-				val sDP = if (sire.size > DP && sire(DP) != ".") sire(DP).toInt else 0
-				val dDP = if (dam.size > DP && dam(DP) != ".") dam(DP).toInt else 0
+				//println(proband.reduceLeft{(a,b) => a + ":" + b})
+				//println(phaseLine(8) + " DP=" + DP)
+				//val pDP = if (proband.size > DP && proband(DP) != ".") proband(DP).toInt else 0
+				val pDP = if (proband.size > DP && DP != -1 && proband(DP) != ".") proband(DP).toInt else 0
+				val sDP = if (sire.size > DP && DP != -1 && sire(DP) != "." ) sire(DP).toInt else 0
+				val dDP = if (dam.size > DP && DP != -1 && dam(DP) != ".") dam(DP).toInt else 0
 				
 				if (pDP >= 51) readDepths(fam._1)(51) += 1 else readDepths(fam._1)(pDP) += 1
 				if (sDP >= 51) readDepths(family._2(0))(51) += 1 else readDepths(family._2(0))(sDP) += 1
@@ -567,7 +572,7 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 						
 				for (kid <- family._3){
 					var curKid = phaseLine(vcfanimals(kid)).split(":")
-					val kidDP = if (curKid.size > DP && curKid(DP) != ".") curKid(DP).toInt else 0
+					val kidDP = if (curKid.size > DP && DP != -1 && curKid(DP) != ".") curKid(DP).toInt else 0
 					if (kidDP >= 51) readDepths(kid)(51) += 1 else readDepths(kid)(kidDP) += 1
 					
 					var inherited = childPhase(phaseVal,curKid)
@@ -615,10 +620,10 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 				out.write(s"${num}\t${indv._2(num)}\t${indv._2(num)/sum.toFloat * 100}\n")
 			}
 		} else {
-			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1)) * 100}\n")
-			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1)) * 100}\n")
-			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3)) * 100}\n")
-			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3)) * 100}\n")
+			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1) + 1) * 100}\n")
+			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1) + 1) * 100}\n")
+			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3) + 1) * 100}\n")
+			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3) + 1) * 100}\n")
 		}
 		out.close
 	}
@@ -633,7 +638,7 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 			while (in.ready){
 				/* Read file into Array of tuples */
 				val line = in.readLine.split("\t")
-				phased = (line(0),line(1).toInt,line(3)) :: phased
+				phased = (line(0),line(1).toInt,line(2)) :: phased
 			}
 			in.close
 						
@@ -674,25 +679,28 @@ phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 
 /* Build Reference Array, Note all positions are exact S added as a Guard for 0 */
 
+System.err.println("Reading Reference")
+import scala.collection.mutable.ListBuffer
 val ref = new BufferedReader(new FileReader(settings("REF")))
+//var refTable = new HashMap[String,ListBuffer[Char]]
 var refTable = new HashMap[String,Array[Char]]
-var refLastChr = ""
-var refSeq : List[Char] = 'S' :: Nil
+var line, refLastChr = ""
+var refSeq = ListBuffer("Init")
 
 while (ref.ready){
-	val line = ref.readLine
+	line = ref.readLine
 	if (line(0) == '>'){
-		refTable += refLastChr -> refSeq.reverse.toArray
-		refSeq = 'S' :: Nil
-		refLastChr = if (line.indexOf(' ') == -1) line.substring(1,line.size -1) else line.split(" ").apply(0).substring(1,line.split(" ").apply(0).size)
+		System.err.println(line)
+		refTable += refLastChr -> refSeq.reduceLeft{(a,b) => a + b}.toArray
+		refSeq = new ListBuffer[String]
+		refLastChr = if (line.indexOf(' ') == -1) line.substring(1,line.size) else line.substring(1).split("\\s+")(0)
 	} else {
-		refSeq = line.toList.reverse ::: refSeq
+		refSeq.append(line)
 	}
 }
 
-refLastChr = ""
-refSeq = Nil
-
+refSeq = new ListBuffer[String]
+ref.close
 
 /*
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
@@ -847,7 +855,7 @@ refSeq = Nil
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
 									case "BOTH" => varSirePhase += 0.01 ; varDamPhase += 0.01
-									case _ => System.err.println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+									case _ => System.err.println("##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 								}
 								//kidsPhase = allChildren(indv) :: kidsPhase
 							}
@@ -856,7 +864,7 @@ refSeq = Nil
 							case `sire` => sirePhase += 1
 							case `dam` => damPhase += 1
 							case "BOTH" => sirePhase += 0.01 ; damPhase += 0.01
-							case _ => System.err.println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+							case _ => System.err.println("##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 						}
 						//if (allChildren(indv) == sire) sirePhase += 1 else damPhase += 1
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(indv)}\t"
@@ -970,8 +978,7 @@ refSeq = Nil
 															if (reoccur){true}else{popFreq == 0}
 															)
 						){
-						//denovo = true
-						
+	
 						var phaseQual = ""
 						
 						if (varSirePhase >= 1 && varDamPhase >= 1){
@@ -984,25 +991,7 @@ refSeq = Nil
 							}
 						}
 
-						/* Redo to simplify
-						if (kidsPhase.exists(_ == sire) && kidsPhase.exists(_ == dam)){
-							phaseQual = "Bad\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
-						} else {
-							if ((kidsPhase.exists(_ == sire) && (kidsPhase.count(_ == sire) != sirePhase)) || (kidsPhase.exists(_ == dam) && (kidsPhase.count(_ == dam) != damPhase))){
-								phaseQual = "Partial\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
-							} else {
-								phaseQual = "Good\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
-							}
-						}
-						*/
-						
-						/*
-						if ((proRatio._1 + proRatio._2) <= minDP) {
-							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
-							proBand.foreach(er => errors.print(er + " "))
-							errors.print("\n")
-							}
-							*/
+						println(line(0) + " chr size " + refTable(line(0)).size)
 						var triNuc = refTable(line(0)).apply(line(1).toInt -1).toString + refTable(line(0)).apply(line(1).toInt).toString + refTable(line(0)).apply(line(1).toInt +1).toString
 						var triNucAlt = triNuc(0) + line(4) + triNuc(2)
 						
