@@ -795,7 +795,8 @@ ref.close
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
 									case "BOTH" => varSirePhase += 0.01 ; varDamPhase += 0.01
-									case _ => System.err.println("##############\n Error in Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+									case "NONE" =>
+									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 								}
 							}
 						}
@@ -803,8 +804,9 @@ ref.close
 							case `sire` => sirePhase += 1
 							case `dam` => damPhase += 1
 							case "BOTH" => sirePhase += 0.01 ; damPhase += 0.01
+							case "NONE" =>
 							case "" =>
-							case _ => System.err.println("##############\n Error in Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 						}
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(childID)}\t"
 					}
