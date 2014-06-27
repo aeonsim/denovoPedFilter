@@ -11,27 +11,30 @@
 import scala.collection.mutable.HashMap
 
 class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String]]]){
-
-
-	var curPhaseBlock = 0
+	
+	var curPhaseBlocks = new HashMap[String,Int]
+	for (c <- phaseData.keys){
+		curPhaseBlocks += c -> 0
+	}
+	
 	
 	def getPhase(chrom: String, position: Int) : String ={
 		
-		if (phaseData(chrom).size == 0 || phaseData(chrom).size <= curPhaseBlock){
+		if (phaseData(chrom).size == 0){
 			//System.err.println("Empty Chrom " + chrom)
 			return "NONE"
 		} else {
-			val curStart = phaseData(chrom)(curPhaseBlock)._2
-			val curEnd = phaseData(chrom)(curPhaseBlock)._3
-			if (curPhaseBlock >= phaseData.size){
-				return "NONE"
+			val curStart = phaseData(chrom)(curPhaseBlocks(chrom))._2
+			val curEnd = phaseData(chrom)(curPhaseBlocks(chrom))._3
+			if (curPhaseBlocks(chrom) >= phaseData(chrom).size){
+				return "END"
 			} else {
 				if (position > curEnd){
-					curPhaseBlock += 1
+					curPhaseBlocks(chrom) += 1
 					return getPhase(chrom, position)
 				} else {
 					if (position >= curStart){
-						return phaseData(chrom)(curPhaseBlock)._4
+						return phaseData(chrom)(curPhaseBlocks(chrom))._4
 					} else {
 						return "BOTH"
 					}
@@ -39,6 +42,21 @@ class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String
 			}
 		}		
 	} //ed def
+	
+	def getNearestBlock(chrom: String, position: Int) : String = {
+		if (curPhaseBlocks(chrom) >= phaseData(chrom).size){
+			return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4
+		} else {
+			//if (curPhaseBlocks(chrom) >= 1 && phaseData(chrom).size != 0){
+				val cur = scala.math.abs(position - phaseData(chrom)(curPhaseBlocks(chrom))._2)
+				val prev = scala.math.abs(position - phaseData(chrom)(curPhaseBlocks(chrom) - 1)._2)
+				
+				if (prev <= cur) return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4 else return phaseData(chrom)(curPhaseBlocks(chrom))._4
+				
+			//}
+		}
+	
+	}
 }
 
 
@@ -508,7 +526,7 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 			PL = if (format.contains("PL")) format.indexOf("PL") else format.indexOf("GL")
 			PLexist = true
 		}
-		
+	  	if (phaseLine(3).size == 1 && phaseLine(4).size == 1 && phaseLine(5).toDouble > 100){
 		for (fam <- trios.par){
 			/* Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam) */
 			val family = fam._2
@@ -527,10 +545,10 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 								
 				/* Phase Trio at Site 0 = Good Autozome, 1 = bad Autozome, 2 = Good X, 3 = Bad X */
 				val phaseVal = if (checkDP(proband, DP, minDP, maxDP) && checkDP(sire,DP,minDP,maxDP) && checkDP(dam,DP,minDP,maxDP)) {
-						if (proband(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(0) += 1 else readDepths(s"Trio_${fam._1}")(2) += 1 
+						if (phaseLine(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(0) += 1 else readDepths(s"Trio_${fam._1}")(2) += 1 
 						phase(proband, sire, dam) 
 					} else { 
-						if (proband(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(1) += 1 else readDepths(s"Trio_${fam._1}")(3) += 1 
+						if (phaseLine(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(1) += 1 else readDepths(s"Trio_${fam._1}")(3) += 1 
 						("x","x")
 					}
 						
@@ -560,6 +578,7 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 						rawOutput(kid + "_" + fam._1).write(s"${phaseLine(0)}\t${phaseLine(1)}\t${parID}\n")
 					}
 				}
+		}
 		}
 	} //While Phasing
 	
@@ -659,7 +678,7 @@ var refSeq = List('_')
 while (ref.ready){
 	line = ref.readLine
 	if (line(0) == '>'){
-		System.err.println(line)
+		//System.err.println(line)
 		refTable += refLastChr -> refSeq.reverse.toArray
 		refSeq = List('_')
 		refLastChr = if (line.indexOf(' ') == -1) line.substring(1,line.size) else line.substring(1).split("\\s+")(0)
@@ -794,7 +813,8 @@ ref.close
 								allChildren(childID) match {
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
-									case "BOTH" => varSirePhase += 0.01 ; varDamPhase += 0.01
+									case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else varDamPhase += 0.01
+									case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else varDamPhase += 1
 									case "NONE" =>
 									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 								}
@@ -803,9 +823,9 @@ ref.close
 						allChildren(childID) match {
 							case `sire` => sirePhase += 1
 							case `dam` => damPhase += 1
-							case "BOTH" => sirePhase += 0.01 ; damPhase += 0.01
+							case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else damPhase += 1
+							case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else damPhase += 1
 							case "NONE" =>
-							case "" =>
 							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 						}
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(childID)}\t"
@@ -919,13 +939,20 @@ ref.close
 	
 						var phaseQual = ""
 						
+						varSirePhase = varSirePhase + 0.001
+						sirePhase = sirePhase + 0.001
+						varDamPhase = varDamPhase + 0.001
+						damPhase = damPhase + 0.001
+						
+						val denovoHap = varSirePhase.toString.substring(0,4) + "|" + varDamPhase.toString.substring(0,4) + " " + sirePhase.toString.substring(0,4) + "|" + damPhase.toString.substring(0,4)
+						
 						if (varSirePhase >= 1 && varDamPhase >= 1){
-							phaseQual = "Bad\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
+							phaseQual = "Bad\t" + denovoHap
 						} else {
 							if ((varSirePhase > 0 && varSirePhase != sirePhase) || (varDamPhase > 0 & varDamPhase != damPhase)){
-								phaseQual = "Partial\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
+								phaseQual = "Partial\t" + denovoHap
 							} else {
-								phaseQual = "Good\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
+								phaseQual = "Good\t" + denovoHap
 							}
 						}
 
