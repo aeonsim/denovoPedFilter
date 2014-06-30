@@ -815,8 +815,8 @@ ref.close
 								allChildren(childID) match {
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
-									case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 0.01
-									case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 1
+									case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 0.01
+									case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 1
 									case "NONE" =>
 									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 								}
@@ -825,8 +825,8 @@ ref.close
 						allChildren(childID) match {
 							case `sire` => sirePhase += 1
 							case `dam` => damPhase += 1
-							case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
-							case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
 							case "NONE" =>
 							case "" =>
 							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
