@@ -24,11 +24,11 @@ class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String
 			//System.err.println("Empty Chrom " + chrom)
 			return "NONE"
 		} else {
-			val curStart = phaseData(chrom)(curPhaseBlocks(chrom))._2
-			val curEnd = phaseData(chrom)(curPhaseBlocks(chrom))._3
 			if (curPhaseBlocks(chrom) >= phaseData(chrom).size){
 				return "END"
 			} else {
+				val curStart = phaseData(chrom)(curPhaseBlocks(chrom))._2
+				val curEnd = phaseData(chrom)(curPhaseBlocks(chrom))._3
 				if (position > curEnd){
 					curPhaseBlocks(chrom) += 1
 					return getPhase(chrom, position)
@@ -47,13 +47,13 @@ class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String
 		if (curPhaseBlocks(chrom) >= phaseData(chrom).size){
 			return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4
 		} else {
-			//if (curPhaseBlocks(chrom) >= 1 && phaseData(chrom).size != 0){
+			if (curPhaseBlocks(chrom) >= 1 && phaseData(chrom).size != 0){
 				val cur = scala.math.abs(position - phaseData(chrom)(curPhaseBlocks(chrom))._2)
 				val prev = scala.math.abs(position - phaseData(chrom)(curPhaseBlocks(chrom) - 1)._2)
-				
-				if (prev <= cur) return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4 else return phaseData(chrom)(curPhaseBlocks(chrom))._4
-				
-			//}
+				if (prev <= cur) return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4 else return phaseData(chrom)(curPhaseBlocks(chrom))._4				
+			} else {
+				"NONE"
+			}
 		}
 	
 	}
@@ -751,11 +751,13 @@ ref.close
 				val par2 = line(vcfanimals(dam)).split(":")
 				val proBand = line(vcfanimals(fam._1)).split(":")
 			if (isVar(proBand(GT))){
-
-				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
-					//var phasVal = if (checkDP(proBand, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)) phase(proBand,par1, par2) else ("x","x")
-					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
-					if (valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))){
+				val sGT = par1(GT)(0).toString + par1(GT)(2)
+				val dGT = par2(GT)(0).toString + par2(GT)(2)
+				val pGT = proBand(GT)(0).toString + proBand(GT)(2)
+				
+				if (!(sGT.contains(".")) && !(dGT.contains(".")) && !(pGT.contains("."))){
+					val valGTs = permu(sGT,dGT)
+					if (valGTs.contains(pGT) || valGTs.contains(pGT.reverse)){
 						par += 1
 					}
 
@@ -813,8 +815,8 @@ ref.close
 								allChildren(childID) match {
 									case `sire` => varSirePhase += 1
 									case `dam` => varDamPhase += 1
-									case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else varDamPhase += 0.01
-									case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else varDamPhase += 1
+									case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 0.01
+									case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 1
 									case "NONE" =>
 									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 								}
@@ -823,9 +825,10 @@ ref.close
 						allChildren(childID) match {
 							case `sire` => sirePhase += 1
 							case `dam` => damPhase += 1
-							case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else damPhase += 1
-							case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else damPhase += 1
+							case "BOTH" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "END" => if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
 							case "NONE" =>
+							case "" =>
 							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
 						}
 						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(childID)}\t"
@@ -956,14 +959,12 @@ ref.close
 							}
 						}
 
-						//println(line(0) + " chr size " + refTable(line(0)).size)
 						var triNuc = refTable(line(0)).apply(line(1).toInt -1).toString + refTable(line(0)).apply(line(1).toInt).toString + refTable(line(0)).apply(line(1).toInt +1).toString
 						var triNucAlt = triNuc(0) + line(4) + triNuc(2)
 					
 						//Temp for testing speed
 						//var triNuc ="NNN"
 						//var triNucAlt ="NNN"
-						
 						
 						val pls = if (PLexist) (par1(PL) + "," + par2(PL)).split(",") else Array(".",".",".")
 						var worstParent = if (pls.contains(".")) -1 else pls.map(_.toInt).sorted.apply(2)
