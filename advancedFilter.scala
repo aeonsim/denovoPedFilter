@@ -88,8 +88,9 @@ var PL = -1
 /* Takes Parental Genotypes & Generates all combinations*/
 
 	def permu(str: String, str1: String): List[String] = {
-		val result: List[String] = for (i <- str.toList; j <- str1.toList) yield i.toString.concat(j.toString)
-		result
+		var result: Set[String] = Set()
+		for (i <- str.toList; j <- str1.toList) result = result + (i.toString + j.toString) + (j.toString + i.toString)
+		result.toList
 	}
 
 /* Finds Children for a nominated parent based on Pedigree records
@@ -267,7 +268,7 @@ var PL = -1
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
 if (sire.size >= PL && dam.size >= PL && indv.size >= PL) {
-	val minPLval = if (vcfType == "gatk") 40 else 5
+	val minPLval = if (vcfType == "gatk") 50 else 5
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT  = dam(0)
@@ -311,7 +312,7 @@ if ((indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toIn
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	if (child.size >= PL){
 	val childGT = child(0)
-	val minPLval = if (vcfType == "gatk") 35 else 5
+	val minPLval = if (vcfType == "gatk") 50 else 5
 	val childPL = child(PL).split(",").sorted.tail 
 	if ((curPhase._1 != "x") && (! childPL.exists(_.toInt <= minPLval)) && (childGT == "1/1" || childGT == "0/0")){
 		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
@@ -561,13 +562,13 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 					val sireid = pedFile(kid).apply(2)
 					val damid = pedFile(kid).apply(3)
 					if (vcfanimals.contains(sireid) && vcfanimals.contains(damid)) {
-					
 						val cSire = phaseLine(vcfanimals(sireid)).split(":")
 						val cDam = phaseLine(vcfanimals(damid)).split(":")	
-						val fullPhase = phase(curKid, cSire, cDam)
-						
+						val fullPhase = if (checkDP(proband, DP, minDP, maxDP) && checkDP(sire,DP,minDP,maxDP) && checkDP(dam,DP,minDP,maxDP)) phase(curKid, cSire, cDam) else ("x","x")
 						if (fullPhase._1 != "x") { 
 							if (fullPhase._1 == phaseVal._1) inherited = "S" else inherited = "D" 							
+						} else {
+							inherited = childPhase(phaseVal,curKid)
 						}
 					} else {
 						inherited = childPhase(phaseVal,curKid)
@@ -596,10 +597,10 @@ var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
 				out.write(s"${num}\t${indv._2(num)}\t${indv._2(num)/sum.toFloat * 100}\n")
 			}
 		} else {
-			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1) + 1) * 100}\n")
-			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1) + 1) * 100}\n")
-			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3) + 1) * 100}\n")
-			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3) + 1) * 100}\n")
+			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1) + 1.0) * 100}\n")
+			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1) + 1.0) * 100}\n")
+			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3) + 1.0) * 100}\n")
+			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3) + 1.0) * 100}\n")
 		}
 		out.close
 	}
@@ -757,12 +758,12 @@ ref.close
 				
 				if (!(sGT.contains(".")) && !(dGT.contains(".")) && !(pGT.contains("."))){
 					val valGTs = permu(sGT,dGT)
-					if (valGTs.contains(pGT) || valGTs.contains(pGT.reverse)){
+					if (valGTs.contains(pGT)){
 						par += 1
 					}
 
 			/* After checking that the Parent GT's can produce the Denovo check AD/RO/AO incase GT misscall */
-				while(parPos < ped._2.size){
+				while(parPos < ped._2.size && ped._1.size < 4){
 					indv = ped._2.apply(parPos)
 					parPos += 1
 						if (line(vcfanimals(indv))(0) != '.'){
