@@ -19,8 +19,17 @@ class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String
 	
 	
 	def getPhase(chrom: String, position: Int) : String ={
+	
+	//Simple block ID
+		val block = phaseData(chrom).filter(pos => (pos._2 <= position && pos._3 >= position))
+		if (block.size == 1){
+			block(0)._4
+		} else {
+			"BOTH"
+		}
+
 		
-		if (phaseData(chrom).size == 0){
+	/*	if (phaseData(chrom).size == 0){
 			//System.err.println("Empty Chrom " + chrom)
 			return "NONE"
 		} else {
@@ -40,7 +49,8 @@ class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String
 					}
 				}
 			}
-		}		
+		}	*/
+			
 	} //ed def
 	
 	def getNearestBlock(chrom: String, position: Int) : String = {
@@ -268,7 +278,7 @@ var PL = -1
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
 if (sire.size >= PL && dam.size >= PL && indv.size >= PL) {
-	val minPLval = if (vcfType == "gatk") 50 else 5
+	val minPLval = if (vcfType == "gatk") 40 else 5
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT  = dam(0)
@@ -312,7 +322,7 @@ if ((indvPL(0).toInt >= minPLval && sirePL(0).toInt >= minPLval && damPL(0).toIn
 def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	if (child.size >= PL){
 	val childGT = child(0)
-	val minPLval = if (vcfType == "gatk") 50 else 5
+	val minPLval = if (vcfType == "gatk") 40 else 5
 	val childPL = child(PL).split(",").sorted.tail 
 	if ((curPhase._1 != "x") && (! childPL.exists(_.toInt <= minPLval)) && (childGT == "1/1" || childGT == "0/0")){
 		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
@@ -366,8 +376,8 @@ def main (args: Array[String]): Unit = {
 
 	val outname = settings("VCF").split("/")(settings("VCF").split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
-	val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
-	val statsOut = new BufferedWriter(new FileWriter(settings("OUT")))
+	//val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
+	//val statsOut = new BufferedWriter(new FileWriter(settings("OUT")))
 	
 	var pedFile = new HashMap[String, Array[String]]
 
@@ -395,7 +405,7 @@ def main (args: Array[String]): Unit = {
 	var vcfrec = in_vcf.readLine().split("\t")
 	while (vcfrec(0).apply(1) == '#'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
-		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+		//out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		vcfrec = in_vcf.readLine().split("\t")
 	}
 
@@ -404,7 +414,7 @@ def main (args: Array[String]): Unit = {
 
 	if (vcfrec(0).apply(0) == '#' && vcfrec(0).apply(1) == 'C'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
-		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+		//out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		for (i <- 9 to (vcfrec.size -1)){
 			vcfanimals += vcfrec(i) -> i
 		}
@@ -668,6 +678,7 @@ phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
  //TEMP Disabled for speed reasons with testing
 System.err.println("Reading Reference")
 
+/*
 var refTable = new HashMap[String,Array[Char]]
 //val futureRefTable :Future[HashMap[String,Array[Char]]] = future{
 
@@ -690,7 +701,7 @@ while (ref.ready){
 }
 refSeq = Nil
 ref.close
-
+*/
 
 /*
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
@@ -755,9 +766,10 @@ ref.close
 				val sGT = par1(GT)(0).toString + par1(GT)(2)
 				val dGT = par2(GT)(0).toString + par2(GT)(2)
 				val pGT = proBand(GT)(0).toString + proBand(GT)(2)
-				
+				//print(s"${sGT} ${dGT} ${pGT} pos: ")
 				if (!(sGT.contains(".")) && !(dGT.contains(".")) && !(pGT.contains("."))){
 					val valGTs = permu(sGT,dGT)
+					//valGTs.foreach(s => print(s + " "))
 					if (valGTs.contains(pGT)){
 						par += 1
 					}
@@ -776,6 +788,7 @@ ref.close
 							}
 						}
 					}
+					//print("\n")
 
 			/* Loop through each family group and record Hets */
 				var grands: List[String] = Nil
@@ -806,33 +819,10 @@ ref.close
 						val curAn = line(vcfanimals(indv)).split(":")
 						if(curAn(0).apply(0) != '.' && curAn.size >= PL){	
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)			
-							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
-							try {
-							allChildren(childID) = phaseTracking(childID).getPhase(line(0),line(1).toInt)	// Maybe should be in isVar test?	
-								} catch{
-									case e: Exception => println("exception caught: " + e + "\n" + "Child ID at Crash " + childID + " AND Phased? " + phaseTracking.contains(childID) + " @ " + line(0) + " " + line(1).toInt + " " + phaseTracking(childID).getPhase(line(0),line(1).toInt));
-								}
+							if (isVar(curAn(GT)) || refAlt._2 >= 1){
 								kids += 1
-								allChildren(childID) match {
-									case `sire` => varSirePhase += 1
-									case `dam` => varDamPhase += 1
-									case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 0.01
-									case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 1
-									case "NONE" =>
-									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
-								}
 							}
 						}
-						allChildren(childID) match {
-							case `sire` => sirePhase += 1
-							case `dam` => damPhase += 1
-							case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
-							case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
-							case "NONE" =>
-							case "" =>
-							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
-						}
-						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(childID)}\t"
 					}
 
 			//Desec
@@ -905,9 +895,9 @@ ref.close
 					val proGT = proBand(GT)
 					
 					//println("Parents " + par + "Ancestors " + ances + " Kids " + kids + " Desc " + desc + " Pop " + popFreq)
-					val debug = false
+					val debug = true
 					
-					if (debug && popFreq == 0 && par == 0) {
+					if (debug && popFreq == 0 && ances == 0) {
 					proBand.foreach(s => print(s"${s} "))
 					 print("\n")
 					 print(s"GT ${!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))} ALTGood(${proRatio._2 >= minALT} ${proRatio._2 == -1}) PL${checkPL(minPL, curPro)} SPL${checkPL(minPL, par1)} DPL${checkPL(minPL, par2)}\n")
@@ -941,6 +931,34 @@ ref.close
 															)
 						){
 	
+						try {
+							allChildren(childID) = phaseTracking(childID).getPhase(line(0),line(1).toInt)	// Maybe should be in isVar test?	
+								} catch{
+									case e: Exception => println("exception caught: " + e + "\n" + "Child ID at Crash " + childID + " AND Phased? " + phaseTracking.contains(childID) + " @ " + line(0) + " " + line(1).toInt + " " + phaseTracking(childID).getPhase(line(0),line(1).toInt));
+								}
+								
+						allChildren(childID) match {
+									case `sire` => varSirePhase += 1
+									case `dam` => varDamPhase += 1
+									case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 0.01
+									case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 1
+									case "NONE" =>
+									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+								}
+								
+						allChildren(childID) match {
+							case `sire` => sirePhase += 1
+							case `dam` => damPhase += 1
+							case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "NONE" =>
+							case "" =>
+							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+						}
+						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(childID)}\t"
+								
+								
+	
 						var phaseQual = ""
 						
 						varSirePhase = varSirePhase + 0.001
@@ -960,12 +978,12 @@ ref.close
 							}
 						}
 
-						var triNuc = refTable(line(0)).apply(line(1).toInt -1).toString + refTable(line(0)).apply(line(1).toInt).toString + refTable(line(0)).apply(line(1).toInt +1).toString
-						var triNucAlt = triNuc(0) + line(4) + triNuc(2)
+						//var triNuc = refTable(line(0)).apply(line(1).toInt -1).toString + refTable(line(0)).apply(line(1).toInt).toString + refTable(line(0)).apply(line(1).toInt +1).toString
+						//var triNucAlt = triNuc(0) + line(4) + triNuc(2)
 					
 						//Temp for testing speed
-						//var triNuc ="NNN"
-						//var triNucAlt ="NNN"
+						var triNuc ="NNN"
+						var triNucAlt ="NNN"
 						
 						val pls = if (PLexist) (par1(PL) + "," + par2(PL)).split(",") else Array(".",".",".")
 						var worstParent = if (pls.contains(".")) -1 else pls.map(_.toInt).sorted.apply(2)
