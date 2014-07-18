@@ -8,66 +8,64 @@
 */
 
 /* phaseTracker takes in phase blocks and tracks position within the block for each query*/
-class phaseTracker (phaseData: Array[Tuple4[String,Int,Int,String]]){
-	var curPhaseBlock = 0
+import scala.collection.mutable.HashMap
+
+class phaseTracker (phaseData: HashMap[String,Array[Tuple4[String,Int,Int,String]]]){
+	
+	var curPhaseBlocks = new HashMap[String,Int]
+	for (c <- phaseData.keys){
+		curPhaseBlocks += c -> 0
+	}
+	
 	
 	def getPhase(chrom: String, position: Int) : String ={
-		println("Block " + phaseData(curPhaseBlock)._1 + " "  + phaseData(curPhaseBlock)._2 + " " + phaseData(curPhaseBlock)._3 + " " + phaseData(curPhaseBlock)._4 + " Looking For:" + chrom + " " + position)
-		
-		 if (phaseData(curPhaseBlock)._1 != chrom) {
-		 	val chr = if (chrom(0).toString.toUpperCase == "C") chrom.substring(3,chrom.size) else chrom
-		 	val chrnum = if (chr.toUpperCase == "X") 999 else if (List("M","MT").contains(chr.toUpperCase)) 1000 else chr.toInt
-		 	while (phaseData(curPhaseBlock)._1 != chrom){
-				val bchr = if( phaseData(curPhaseBlock)._1(0).toString.toUpperCase == "C" ) phaseData(curPhaseBlock)._1.substring(3, phaseData(curPhaseBlock)._1.size) else  phaseData(curPhaseBlock)._1
-				val bchrnum = if (bchr.toUpperCase == "X") 999 else if (List("M","MT").contains(bchr.toUpperCase)) 1000 else bchr.toInt
-				if (chrnum >= bchrnum ) curPhaseBlock += 1 else curPhaseBlock -= 1
-				System.err.println("looping through Chrs currently " + phaseData(curPhaseBlock)._1 + " Going to " + chrom )
-			}
-		}
-		val nextPhaseBlock = curPhaseBlock + 1
-		val curStart = phaseData(curPhaseBlock)._2
-		val curEnd = phaseData(curPhaseBlock)._3
-		
-		if (nextPhaseBlock < phaseData.size){
-			val nextStart = phaseData(nextPhaseBlock)._2
-			val nextEnd = phaseData(nextPhaseBlock)._3
-			val nextChrom = phaseData(nextPhaseBlock)._1
-			
-			if (position <= curEnd && position >= curStart){
-				return phaseData(curPhaseBlock)._4
-			} else {
-				if (position < curStart) {
-					return "BOTH"
-				} else {
-					if (position > curEnd && position < nextStart){
-						return "BOTH"
-					} else {
-						if (position <= nextEnd && position >= nextStart){
-							curPhaseBlock += 1
-							return phaseData(curPhaseBlock)._4
-						} else {
-							if (position > nextEnd && nextChrom == chrom){
-								curPhaseBlock += 1
-								getPhase(chrom, position)
-							} else {
-								//curPhaseBlock += 1
-								return "BOTH"
-							}
-						}
-					}
-				}				
-			}
+	
+	//Simple block ID
+		val block = phaseData(chrom).filter(pos => (pos._2 <= position && pos._3 >= position))
+		if (block.size == 1){
+			block(0)._4
 		} else {
-			if (position < curStart){
-				return "BOTH"
+			"BOTH"
+		}
+
+		
+	/*	if (phaseData(chrom).size == 0){
+			//System.err.println("Empty Chrom " + chrom)
+			return "NONE"
+		} else {
+			if (curPhaseBlocks(chrom) >= phaseData(chrom).size){
+				return "END"
 			} else {
-				if (position <= curEnd && position >= curStart){
-					return phaseData(curPhaseBlock)._4
+				val curStart = phaseData(chrom)(curPhaseBlocks(chrom))._2
+				val curEnd = phaseData(chrom)(curPhaseBlocks(chrom))._3
+				if (position > curEnd){
+					curPhaseBlocks(chrom) += 1
+					return getPhase(chrom, position)
 				} else {
-					return "BOTH"
+					if (position >= curStart){
+						return phaseData(chrom)(curPhaseBlocks(chrom))._4
+					} else {
+						return "BOTH"
+					}
 				}
 			}
+		}	*/
+			
+	} //ed def
+	
+	def getNearestBlock(chrom: String, position: Int) : String = {
+		if (curPhaseBlocks(chrom) >= phaseData(chrom).size){
+			return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4
+		} else {
+			if (curPhaseBlocks(chrom) >= 1 && phaseData(chrom).size != 0){
+				val cur = scala.math.abs(position - phaseData(chrom)(curPhaseBlocks(chrom))._2)
+				val prev = scala.math.abs(position - phaseData(chrom)(curPhaseBlocks(chrom) - 1)._2)
+				if (prev <= cur) return phaseData(chrom)(curPhaseBlocks(chrom) - 1)._4 else return phaseData(chrom)(curPhaseBlocks(chrom))._4				
+			} else {
+				"NONE"
+			}
 		}
+	
 	}
 }
 
@@ -100,8 +98,9 @@ var PL = -1
 /* Takes Parental Genotypes & Generates all combinations*/
 
 	def permu(str: String, str1: String): List[String] = {
-		val result: List[String] = for (i <- str.toList; j <- str1.toList) yield i.toString.concat(j.toString)
-		result
+		var result: Set[String] = Set()
+		for (i <- str.toList; j <- str1.toList) result = result + (i.toString + j.toString) + (j.toString + i.toString)
+		result.toList
 	}
 
 /* Finds Children for a nominated parent based on Pedigree records
@@ -348,8 +347,8 @@ def main (args: Array[String]): Unit = {
 	}
 	
 
-	if ((! settings.contains("VCF")) && (! settings.contains("PED")) && (! settings.contains("TRIOS")) && (! settings.contains("TYPE")) && (! settings.contains("OUT"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt OUT=denovo-stats.txt type=gatk,plat,fb { phaseVCF=SNPChip.vcf.gz minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
+	if ((! settings.contains("VCF")) && (! settings.contains("PED")) && (! settings.contains("TRIOS")) && (! settings.contains("REF")) && (! settings.contains("TYPE"))) {
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt phase=phase.vcf.gz type=gatk,plat,fb ref=genome.fasta { phaseVCF=SNPChip.vcf.gz minDP=0 minALT=0 RECUR=F/T minKIDS=1 PLGL=0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -367,6 +366,7 @@ def main (args: Array[String]): Unit = {
 	val minPL = if (settings.contains("MINPL")) settings("MINPL").toInt else 0
 	val minKids = if (settings.contains("MINKIDS")) settings("MINKIDS").toInt else 1
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
+	val phaseVCF = if (settings.contains("PHASE")) settings("PHASE") else settings("VCF")
 	settings("TYPE").toUpperCase match {
 		case "GATK" => vcfType = "gatk"
 		case "PLAT" => vcfType = "platypus"
@@ -376,8 +376,8 @@ def main (args: Array[String]): Unit = {
 
 	val outname = settings("VCF").split("/")(settings("VCF").split("/").size - 1)
 	val out_vcf = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-denovos.vcf.gz")))
-	val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
-	val statsOut = new BufferedWriter(new FileWriter(settings("OUT")))
+	//val out_somatic = new BufferedWriter(new OutputStreamWriter(new BlockCompressedOutputStream(outname + ".mutations-" + reoccur + "-somatic.vcf.gz")))
+	//val statsOut = new BufferedWriter(new FileWriter(settings("OUT")))
 	
 	var pedFile = new HashMap[String, Array[String]]
 
@@ -396,10 +396,8 @@ def main (args: Array[String]): Unit = {
 	var DP = -1
 	var RO = -1
 	var AO = -1
-	var lastPhase = new HashMap[String,Tuple2[String,String]]
-	var childState = new HashMap[String,String]
 	var allChildren = new HashMap[String,String]
-	var childHaps = new HashMap[String, List[String]]
+
 /*
 * Iterate through VCF file to find Column headers and store positions in Map for later recall
 */
@@ -407,7 +405,7 @@ def main (args: Array[String]): Unit = {
 	var vcfrec = in_vcf.readLine().split("\t")
 	while (vcfrec(0).apply(1) == '#'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
-		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+		//out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		vcfrec = in_vcf.readLine().split("\t")
 	}
 
@@ -416,7 +414,7 @@ def main (args: Array[String]): Unit = {
 
 	if (vcfrec(0).apply(0) == '#' && vcfrec(0).apply(1) == 'C'){
 		out_vcf.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
-		out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
+		//out_somatic.write(vcfrec.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 		for (i <- 9 to (vcfrec.size -1)){
 			vcfanimals += vcfrec(i) -> i
 		}
@@ -448,7 +446,7 @@ def main (args: Array[String]): Unit = {
 			parents = List(pedFile(curPro(0))(2),pedFile(curPro(0))(3))
 			ancestors = itPed(pedFile,curPro(0),2).tail.filterNot(x => parents.contains(x) || (! vcfanimals.contains(x)))
 			children = findChildren(pedFile,vcfanimals,curPro(0))
-			for (indv <- animalIDS.toList){ //.filterNot(x => ( (x == curPro(0)) || children.contains(x) || ancestors.contains(x) || parents.contains(x)))){
+			for (indv <- animalIDS.toList){
 				val tempPed = itPed(pedFile,indv,99)
 				if (tempPed.contains(parents(0)) || tempPed.contains(parents(1))){
 					descendents = indv :: descendents
@@ -467,8 +465,8 @@ def main (args: Array[String]): Unit = {
 			if (animalIDS.contains(parents(0)) && animalIDS.contains(parents(1)) && animalIDS.contains(curPro(0)) && children.size >= minKids){
 				trios += curPro(0) -> (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam)
 				for (child <- children) {
-				allChildren += child -> ""
-				childHaps += child ->  ("chr1\t1\t1\tU" :: Nil)
+				allChildren += (child + "_" + curPro(0)) -> ""
+				//childHaps += child ->  ("chr1\t1\t1\tU" :: Nil)
 				}
 			}
 		}//eif
@@ -482,23 +480,21 @@ println("Built Pedigrees\n")
 /* Report identified Trios & there Pedigree Structure*/
 
 	for (fam <- trios){
-		println(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}")
-		println("Grandparents\t")
+		println(s"TRIO:\t${fam._1}\t${fam._2._2(0)}\t${fam._2._2(1)}\n")
+		println("Grandparents\t" + fam._2._1.size)
 		fam._2._1.foreach(s => println(s + "\t"))
-		println(fam._2._1.size)
-		println("Children\t")		
+		println("Children\t" + fam._2._3.size)		
 		fam._2._3.foreach(s => println(s + "\t"))
-		println(fam._2._3.size)
-		println("Descendents\t")
+		println("Descendents\t" + fam._2._4.size)
 		fam._2._4.foreach(s => println(s + "\t"))
-		println(fam._2._4.size + "\n")
-		println("EXFAM\t")
+		println("EXFAM\t" + fam._2._7.size + "\n")
 		fam._2._7.foreach(s => println(s + "\t"))
-		println(fam._2._7.size)
-		lastPhase += fam._1 -> ("u","u")
-		childState += fam._1 -> ""
+		//lastPhase += fam._1 -> ("u","u")
+		//childState += fam._1 -> ""
 	}
-
+	
+	/* Build Reference Array, Note all positions are exact _ added as a Guard for 0 Done Async */
+	
 /*
 * PrePhase Data using SNPChip data if available
 */
@@ -506,52 +502,53 @@ println("Built Pedigrees\n")
 var phaseTracking = new HashMap[String, phaseTracker]
 var readDepths = new HashMap[String,Array[Int]]
 var phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
-var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 
-	val phaseInfo = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(settings("VCF")))))
+	val phaseInfo = new BufferedReader(new InputStreamReader(new BlockCompressedInputStream(new FileInputStream(phaseVCF))))
 	System.err.println("Have VCF, beginning Pre-phasing")
 	var phaseLine = phaseInfo.readLine.split("\t")
 	while (phaseLine(0).apply(1) == '#') phaseLine = phaseInfo.readLine.split("\t")
 	for (col <- 9 to (phaseLine.size -1)){
 		readDepths += phaseLine(col) -> new Array[Int](52)
-		phaseBlock += phaseLine(col) -> Nil
 	}
 	
+	/* Will output RAW data to disk rather than trying to store in memory */
+	
+	var rawOutput = new HashMap[String,BufferedWriter]
 	for (fam <- trios){
 	/* Record Sites that are decent in Trio */
 		readDepths += s"Trio_${fam._1}" -> new Array[Int](4)
 		for (kid <- fam._2._3){
-			tmpPhase += kid -> (("",0,"") :: Nil)
+			rawOutput += (kid + "_" + fam._1) -> new BufferedWriter(new FileWriter(kid + "_" + fam._1 + "-rawPhase.txt"))
 		} 
 	}
+	
+	var vcfChrs : List[String] = Nil
+	
 	
 	while(phaseInfo.ready){
 	
 		phaseLine = phaseInfo.readLine.split("\t")
-	
+		if (!(vcfChrs.contains(phaseLine(0)))) vcfChrs = phaseLine(0) :: vcfChrs
+		
 		val format = phaseLine(8).split(":")
+		val GT = format.indexOf("GT")
 		DP = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("DP")
 		if (format.contains("PL") || format.contains("GL")){
 			PL = if (format.contains("PL")) format.indexOf("PL") else format.indexOf("GL")
 			PLexist = true
 		}
-		
-		
+	  	if (phaseLine(3).size == 1 && phaseLine(4).size == 1 && phaseLine(5).toDouble > 100){
 		for (fam <- trios.par){
 			/* Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam) */
 			val family = fam._2
 			val maxDP = (family._5 * 1.7).toInt
-			val GT = phaseLine(8).split(":").indexOf("GT")
 				val proband = phaseLine(vcfanimals(fam._1)).split(":")
 				val sire = phaseLine(vcfanimals(family._2(0))).split(":")
 				val dam = phaseLine(vcfanimals(family._2(1))).split(":")
 				
-				//println("pro" + proband.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
-				val pDP = if (proband.size > DP && proband(DP) != ".") proband(DP).toInt else 0
-				//println("sire" + sire.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
-				val sDP = if (sire.size > DP && sire(DP) != ".") sire(DP).toInt else 0
-				//println("dam" + dam.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
-				val dDP = if (dam.size > DP && dam(DP) != ".") dam(DP).toInt else 0
+				val pDP = if (proband.size > DP && DP != -1 && proband(DP) != ".") proband(DP).toInt else 0
+				val sDP = if (sire.size > DP && DP != -1 && sire(DP) != "." ) sire(DP).toInt else 0
+				val dDP = if (dam.size > DP && DP != -1 && dam(DP) != ".") dam(DP).toInt else 0
 				
 				if (pDP >= 51) readDepths(fam._1)(51) += 1 else readDepths(fam._1)(pDP) += 1
 				if (sDP >= 51) readDepths(family._2(0))(51) += 1 else readDepths(family._2(0))(sDP) += 1
@@ -559,46 +556,45 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 								
 				/* Phase Trio at Site 0 = Good Autozome, 1 = bad Autozome, 2 = Good X, 3 = Bad X */
 				val phaseVal = if (checkDP(proband, DP, minDP, maxDP) && checkDP(sire,DP,minDP,maxDP) && checkDP(dam,DP,minDP,maxDP)) {
-						if (proband(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(0) += 1 else readDepths(s"Trio_${fam._1}")(2) += 1 
+						if (phaseLine(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(0) += 1 else readDepths(s"Trio_${fam._1}")(2) += 1 
 						phase(proband, sire, dam) 
 					} else { 
-						if (proband(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(1) += 1 else readDepths(s"Trio_${fam._1}")(3) += 1 
+						if (phaseLine(0).toUpperCase != "CHRX") readDepths(s"Trio_${fam._1}")(1) += 1 else readDepths(s"Trio_${fam._1}")(3) += 1 
 						("x","x")
 					}
 						
 				for (kid <- family._3){
+					var inherited = ""
 					var curKid = phaseLine(vcfanimals(kid)).split(":")
-					//println(curKid.reduceLeft{(a,b) => a + ":" + b} + " " + phaseLine(8))
-					val kidDP = if (curKid.size > DP && curKid(DP) != ".") curKid(DP).toInt else 0
+					val kidDP = if (curKid.size > DP && DP != -1 && curKid(DP) != ".") curKid(DP).toInt else 0
 					if (kidDP >= 51) readDepths(kid)(51) += 1 else readDepths(kid)(kidDP) += 1
 					
-					var inherited = childPhase(phaseVal,curKid)
 					val sireid = pedFile(kid).apply(2)
 					val damid = pedFile(kid).apply(3)
 					if (vcfanimals.contains(sireid) && vcfanimals.contains(damid)) {
-					
 						val cSire = phaseLine(vcfanimals(sireid)).split(":")
-						val cDam = phaseLine(vcfanimals(damid)).split(":")
-						
-						val fullPhase = phase(curKid, cSire, cDam)
-						
+						val cDam = phaseLine(vcfanimals(damid)).split(":")	
+						val fullPhase = if (checkDP(proband, DP, minDP, maxDP) && checkDP(sire,DP,minDP,maxDP) && checkDP(dam,DP,minDP,maxDP)) phase(curKid, cSire, cDam) else ("x","x")
 						if (fullPhase._1 != "x") { 
 							if (fullPhase._1 == phaseVal._1) inherited = "S" else inherited = "D" 							
+						} else {
+							inherited = childPhase(phaseVal,curKid)
 						}
-					} 
+					} else {
+						inherited = childPhase(phaseVal,curKid)
+					}
 					
 					if (inherited != "U") {
 						val parID = if (inherited == "S") family._2(0) else family._2(1)
-						tmpPhase(kid) =  (phaseLine(0),phaseLine(1).toInt,parID) :: tmpPhase(kid)
+						rawOutput(kid + "_" + fam._1).write(s"${phaseLine(0)}\t${phaseLine(1)}\t${parID}\n")
 					}
 				}
 		}
+		}
 	} //While Phasing
 	
-	for (fam <- trios.par){
-		for (kid <- fam._2._3){
-			tmpPhase(kid) = tmpPhase(kid).reverse.tail
-		} 
+	for (fileout <- rawOutput){
+		fileout._2.close
 	}
 	
 	phaseInfo.close
@@ -611,30 +607,42 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 				out.write(s"${num}\t${indv._2(num)}\t${indv._2(num)/sum.toFloat * 100}\n")
 			}
 		} else {
-			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1)) * 100}\n")
-			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1)) * 100}\n")
-			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3)) * 100}\n")
-			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3)) * 100}\n")
+			out.write(s"Autozome good: ${indv._2(0)}\t${indv._2(0)/(indv._2(0) + indv._2(1) + 1.0) * 100}\n")
+			out.write(s"Autozome bad : ${indv._2(1)}\t${indv._2(1)/(indv._2(0) + indv._2(1) + 1.0) * 100}\n")
+			out.write(s"ChrX good    : ${indv._2(2)}\t${indv._2(2)/(indv._2(2) + indv._2(3) + 1.0) * 100}\n")
+			out.write(s"ChrX bad     : ${indv._2(3)}\t${indv._2(3)/(indv._2(2) + indv._2(3) + 1.0) * 100}\n")
 		}
 		out.close
 	}
 	
-		for (child <- tmpPhase.par){
-			val out = new BufferedWriter(new FileWriter(child._1 + "-origin.bed"))	
-			val childOrigin = child._2.toArray
+		for(child <- rawOutput){
+			val in = new BufferedReader(new FileReader(child._1 + "-rawPhase.txt"))
+			val out = new BufferedWriter(new FileWriter(child._1 + "-origin.bed"))
+			var blocks = new HashMap[String,Array[Tuple4[String, Int, Int, String]]]
+			var phased : List[Tuple3[String,Int,String]] = Nil 
+			
+			while (in.ready){
+				/* Read file into Array of tuples */
+				val line = in.readLine.split("\t")
+				if (line.size >= 3) phased = (line(0),line(1).toInt,line(2)) :: phased
+			}
+			in.close
+			
+		if(phased.size > 0) {
+						
+			val childOrigin = phased.reverse.toArray
 			
 			var count = 0			
 			var chrom = childOrigin(count)._1
 			var parent = childOrigin(count)._3
 			var start = childOrigin(count)._2
 			var end = childOrigin(count)._2
-
 			
 			phaseBlock += child._1 -> Nil
 			
-			while (count < (childOrigin.size - 1)){
+			while (count < (childOrigin.size -1)){
 				count +=1
-				if (parent != childOrigin(count)._3 | chrom != childOrigin(count)._1){
+				if (parent != childOrigin(count)._3 || chrom != childOrigin(count)._1){
 					phaseBlock(child._1) = Tuple4(chrom,start,end,parent) :: phaseBlock(child._1)
 					out.write(s"${chrom} ${start} ${end} ${parent}\n")
 					chrom = childOrigin(count)._1
@@ -649,19 +657,58 @@ var tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 			out.write(s"${chrom} ${start} ${end} ${parent}\n")
 			out.close
 			
-			phaseTracking += child._1 -> new phaseTracker(phaseBlock(child._1).reverse.toArray)
+			for (ch <- vcfChrs){
+				//System.err.println(ch)
+				blocks += ch -> phaseBlock(child._1).filter(blk => blk._1 == ch).reverse.toArray
+			}		
+			phaseTracking += child._1 -> new phaseTracker(blocks)
+		} else {
+			for (ch <- vcfChrs){
+				blocks += ch -> Array()
+			}
+			phaseTracking += child._1 -> new phaseTracker(blocks)
 		}
+	}
 
 readDepths = new HashMap[String,Array[Int]]
 phaseBlock = new HashMap[String,List[Tuple4[String,Int,Int,String]]]
-tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 
+/* Load Ref into memory for Tri-Nucs*/
+
+ //TEMP Disabled for speed reasons with testing
+System.err.println("Reading Reference")
+
+/*
+var refTable = new HashMap[String,Array[Char]]
+//val futureRefTable :Future[HashMap[String,Array[Char]]] = future{
+
+//var tmpRef = new HashMap[String,Array[Char]]
+val ref = new BufferedReader(new FileReader(settings("REF")))
+var line, refLastChr = ""
+var refSeq = List('_')
+
+while (ref.ready){
+	line = ref.readLine
+	if (line(0) == '>'){
+		//System.err.println(line)
+		refTable += refLastChr -> refSeq.reverse.toArray
+		refSeq = List('_')
+		refLastChr = if (line.indexOf(' ') == -1) line.substring(1,line.size) else line.substring(1).split("\\s+")(0)
+	} else {
+		refSeq = line.toList.reverse ::: refSeq
+		//refSeq = refSeq ++ line
+	}
+}
+refSeq = Nil
+ref.close
+*/
 
 /*
 *	Iterate through VCF file line by line, at each line load each Trio and count existence of variants in different categories
 *	if de novo, flag and output snp detail and variant info, (count in pop, children ancestors etc)
 */
-	print(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
+	//statsOut.write(s"Chrom\tPos\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo\n")
+	println(s"Chrom\tPos\tTRI-NUC\tRef\tRefSize\tAlt\tAltSize\tQUAL\tTrio\tGenotype\tPLs\tWorst Parent PL\tPhase\t Vars S|D Haps S|D\tAnces\tPars\tChildren\tDesc\tExFam\tPop\tPopFreq\tSupport Ratio\tScore\tClass\tProband\tSire\tDam\tPopRefCount\tPopAltCount\tWarning\tPhaseInfo")
 	var lastChr = ""
 	
 	System.err.println("Phasing Complete, beginning De Novo identification & Characterisation")
@@ -691,18 +738,13 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
 				
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
-//try {		
 		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
 			val triosArray = trios.keys.toArray
 			
 			for (fam <- trios.toArray.par){
-			//while(trioPos < triosArray.size){
-				//var fam = trios.toArray.apply(trioPos)
-				//trioPos += 1
 				var indv = ""
 				var kidsPhase : List[String] = Nil
-	//try {
 				var altsPar = 0
 				val ped = fam._2
 				var ances, par, kids, desc, popFreq, exFamFreq = 0
@@ -721,19 +763,21 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 				val par2 = line(vcfanimals(dam)).split(":")
 				val proBand = line(vcfanimals(fam._1)).split(":")
 			if (isVar(proBand(GT))){
-
-				if (par1(GT)(0) != '.' && par2(GT)(0) != '.' && proBand(GT)(0) != '.'){
-					//var phasVal = if (checkDP(proBand, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)) phase(proBand,par1, par2) else ("x","x")
-					val valGTs = permu(par1(GT)(0).toString + par1(GT)(2),par2(GT)(0).toString + par2(GT)(2))
-					if (valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))){
+				val sGT = par1(GT)(0).toString + par1(GT)(2)
+				val dGT = par2(GT)(0).toString + par2(GT)(2)
+				val pGT = proBand(GT)(0).toString + proBand(GT)(2)
+				//print(s"${sGT} ${dGT} ${pGT} pos: ")
+				if (!(sGT.contains(".")) && !(dGT.contains(".")) && !(pGT.contains("."))){
+					val valGTs = permu(sGT,dGT)
+					//valGTs.foreach(s => print(s + " "))
+					if (valGTs.contains(pGT)){
 						par += 1
 					}
 
 			/* After checking that the Parent GT's can produce the Denovo check AD/RO/AO incase GT misscall */
-				while(parPos < ped._2.size){
+				while(parPos < ped._2.size && ped._1.size < 4){
 					indv = ped._2.apply(parPos)
 					parPos += 1
-					//for (indv <- ped._2){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -744,13 +788,13 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 							}
 						}
 					}
+					//print("\n")
 
 			/* Loop through each family group and record Hets */
 				var grands: List[String] = Nil
 				while(grandPos < ped._1.size){
 					indv = ped._1.apply(grandPos)
 					grandPos += 1
-					//for (indv <- ped._1){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -771,64 +815,20 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 				while(childPos < ped._3.size){
 					indv = ped._3.apply(childPos)
 					childPos += 1
-					//for (indv <- ped._3){
+					val childID = (indv + "_" + fam._1)
 						val curAn = line(vcfanimals(indv)).split(":")
-						//if (line(vcfanimals(indv))(0) != '.'){
-						if(curAn(0).apply(0) != '.'){	
-							/* Remove Phase code belongs in own prePhase block now
-							//var inherited = childPhase(phasVal,curAn)
-							val sireid = pedFile(indv).apply(2)
-							val damid = pedFile(indv).apply(3)
-							if (vcfanimals.contains(sireid) && vcfanimals.contains(damid)) {
-								val cSire = line(vcfanimals(sireid)).split(":")
-								val cDam = line(vcfanimals(damid)).split(":")
-								//val fullPhase = if (checkDP(curAn, DP, minDP, maxDP) && checkDP(cSire,DP,minDP,maxDP) && checkDP(cDam,DP,minDP,maxDP)) phase(curAn,cSire, cDam) else ("x","x")
-								val fullPhase = phase(curAn, cSire, cDam)
-								if (fullPhase._1 != "x") { 
-								if (fullPhase._1 == phasVal._1) inherited = "S" else inherited = "D" 							
-								} else {
-									inherited = childPhase(phasVal,curAn)
-								}
-							} else {
-								inherited = childPhase(phasVal,curAn)
-							}
-							*/
+						if(curAn(0).apply(0) != '.' && curAn.size >= PL){	
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)			
-							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
-							allChildren(indv) = phaseTracking(indv).getPhase(line(0),line(1).toInt)	// Maybe should be in isVar test?	
-							
-								/* More Phase Code
-								if (inherited != "U" && (checkDP(curAn,DP,minDP,maxDP))) {
-								val parID = if (inherited == "S") sire else dam
-									allChildren(indv) = parID
-									childHaps(indv) = s"${line(0)}\t${line(1)}\t${line(1)}\t${parID}" :: childHaps(indv)
-								}
-								*/
+							if (isVar(curAn(GT)) || refAlt._2 >= 1){
 								kids += 1
-								allChildren(indv) match {
-									case `sire` => varSirePhase += 1
-									case `dam` => varDamPhase += 1
-									case "BOTH" => varSirePhase += 0.01 ; varDamPhase += 0.01
-									case _ => System.err.println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
-								}
-								//kidsPhase = allChildren(indv) :: kidsPhase
 							}
 						}
-						allChildren(indv) match {
-							case `sire` => sirePhase += 1
-							case `dam` => damPhase += 1
-							case "BOTH" => sirePhase += 0.01 ; damPhase += 0.01
-							case _ => System.err.println("\n\n\n##############\n Error in Phase Identification\n" + allChildren(indv) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
-						}
-						//if (allChildren(indv) == sire) sirePhase += 1 else damPhase += 1
-						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(indv)}\t"
 					}
 
 			//Desec
 				while(descPos < ped._4.size){
 					indv = ped._4.apply(descPos)
 					descPos += 1
-			//		for (indv <- ped._4){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -843,7 +843,6 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					while (popPos < ped._6.size){
 						val indv = ped._6.apply(popPos)
 						popPos += 1
-					//for (indv <- ped._6){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -873,7 +872,6 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					while (exfPos < ped._7.size){
 						val indv = ped._7.apply(exfPos)
 						exfPos += 1
-					//for (indv <- ped._7){
 						if (line(vcfanimals(indv))(0) != '.'){
 							val curAn = line(vcfanimals(indv)).split(":")
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
@@ -897,9 +895,9 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 					val proGT = proBand(GT)
 					
 					//println("Parents " + par + "Ancestors " + ances + " Kids " + kids + " Desc " + desc + " Pop " + popFreq)
-					val debug = false
+					val debug = true
 					
-					if (debug && popFreq == 0 && par == 0) {
+					if (debug && popFreq == 0 && ances == 0) {
 					proBand.foreach(s => print(s"${s} "))
 					 print("\n")
 					 print(s"GT ${!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2))} ALTGood(${proRatio._2 >= minALT} ${proRatio._2 == -1}) PL${checkPL(minPL, curPro)} SPL${checkPL(minPL, par1)} DPL${checkPL(minPL, par2)}\n")
@@ -932,68 +930,75 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 															if (reoccur){true}else{popFreq == 0}
 															)
 						){
-						//denovo = true
-						
+	
+						try {
+							allChildren(childID) = phaseTracking(childID).getPhase(line(0),line(1).toInt)	// Maybe should be in isVar test?	
+								} catch{
+									case e: Exception => println("exception caught: " + e + "\n" + "Child ID at Crash " + childID + " AND Phased? " + phaseTracking.contains(childID) + " @ " + line(0) + " " + line(1).toInt + " " + phaseTracking(childID).getPhase(line(0),line(1).toInt));
+								}
+								
+						allChildren(childID) match {
+									case `sire` => varSirePhase += 1
+									case `dam` => varDamPhase += 1
+									case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 0.01 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 0.01
+									case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) varSirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") varDamPhase += 1
+									case "NONE" =>
+									case _ => System.err.println("##############\n Error in Denovo Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+								}
+								
+						allChildren(childID) match {
+							case `sire` => sirePhase += 1
+							case `dam` => damPhase += 1
+							case "BOTH" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "END" => //if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) == sire) sirePhase += 1 else if (phaseTracking(childID).getNearestBlock(line(0),line(1).toInt) != "NONE") damPhase += 1
+							case "NONE" =>
+							case "" =>
+							case _ => System.err.println("##############\n Error in Haplotype Phase Identification\n" + childID + " Phase: " + allChildren(childID) + "\n" + curAn.reduceLeft{(a,b) => a + ":" + b} +"\n############")
+						}
+						allChildrenState = allChildrenState + s"${indv}:${if (curAn.size >= PL ) curAn(PL) else 0}:${curAn(0)}:${allChildren(childID)}\t"
+								
+								
+	
 						var phaseQual = ""
 						
+						varSirePhase = varSirePhase + 0.001
+						sirePhase = sirePhase + 0.001
+						varDamPhase = varDamPhase + 0.001
+						damPhase = damPhase + 0.001
+						
+						val denovoHap = varSirePhase.toString.substring(0,4) + "|" + varDamPhase.toString.substring(0,4) + " " + sirePhase.toString.substring(0,4) + "|" + damPhase.toString.substring(0,4)
+						
 						if (varSirePhase >= 1 && varDamPhase >= 1){
-							phaseQual = "Bad\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
+							phaseQual = "Bad\t" + denovoHap
 						} else {
 							if ((varSirePhase > 0 && varSirePhase != sirePhase) || (varDamPhase > 0 & varDamPhase != damPhase)){
-								phaseQual = "Partial\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
+								phaseQual = "Partial\t" + denovoHap
 							} else {
-								phaseQual = "Good\t" + varSirePhase + "|" + varDamPhase + " " + sirePhase + "|" + damPhase
+								phaseQual = "Good\t" + denovoHap
 							}
 						}
 
-						/* Redo to simplify
-						if (kidsPhase.exists(_ == sire) && kidsPhase.exists(_ == dam)){
-							phaseQual = "Bad\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
-						} else {
-							if ((kidsPhase.exists(_ == sire) && (kidsPhase.count(_ == sire) != sirePhase)) || (kidsPhase.exists(_ == dam) && (kidsPhase.count(_ == dam) != damPhase))){
-								phaseQual = "Partial\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
-							} else {
-								phaseQual = "Good\t" + kidsPhase.count(_ == sire) + "|" + kidsPhase.count(_ == dam) + " " + sirePhase + "|" + damPhase
-							}
-						}
-						*/
+						//var triNuc = refTable(line(0)).apply(line(1).toInt -1).toString + refTable(line(0)).apply(line(1).toInt).toString + refTable(line(0)).apply(line(1).toInt +1).toString
+						//var triNucAlt = triNuc(0) + line(4) + triNuc(2)
+					
+						//Temp for testing speed
+						var triNuc ="NNN"
+						var triNucAlt ="NNN"
 						
-						/*
-						if ((proRatio._1 + proRatio._2) <= minDP) {
-							errors.println(s"minDP == ${minDP}\t${proRatio._1} + ${proRatio._2}\t ${proBand(DP)}")
-							proBand.foreach(er => errors.print(er + " "))
-							errors.print("\n")
-							}
-							*/
+						val pls = if (PLexist) (par1(PL) + "," + par2(PL)).split(",") else Array(".",".",".")
+						var worstParent = if (pls.contains(".")) -1 else pls.map(_.toInt).sorted.apply(2)
 						
 						if (reoccur && adratio == 0.0){
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/(proRatio._1.toFloat + proRatio._2)}\t${rank}\tdenovo\t" + 
+							print(s"${line(0)}\t${line(1)}\t${triNuc}>${triNucAlt}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${worstParent}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/(proRatio._1.toFloat + proRatio._2)}\t${rank}\tdenovo\t" + 
 								proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\t${allChildrenState}\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}else {
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/(proRatio._1.toFloat + proRatio._2)}\t${rank}\tdenovo\t" + 
-							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}")
-							if (adratio != 0.0) {
-								line(6) = "LOWQUAL_ADratio"
-								print(s"\t WARNING: Low confidence de novo\t${allChildrenState}\n")
-							}else {
-								//statsOut.write("\n")
-								print("\n")
-							}//eelse
+							print(s"${line(0)}\t${line(1)}\t${triNuc}>${triNucAlt}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t${worstParent}\t${phaseQual}\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/(proRatio._1.toFloat + proRatio._2)}\t${rank}\tdenovo\t" + 
+							proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") +  s"\t${popRef}\t${popALT}" + (if (adratio != 0.0) {line(6) = "LOWQUAL_ADratio"; "\t WARNING: LC Denovo\t${allChildrenState}"} ) + "\n")
 							out_vcf.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
 						}//eif reoccur
 
 					} //eif is Denovo
-					
-					
-				/*	if(!valGTs.contains(proBand(GT)(0).toString + proBand(GT)(2)) && (ances == 0) && (par == 0) && (kids == 0) 
-						&& (popFreq == 0) && checkDP(curPro, DP, minDP, maxDP) && checkDP(par1,DP,minDP,maxDP) && checkDP(par2,DP,minDP,maxDP)
-						&& proRatio._2 >= minALT && adratio == 0.0){
-							print(s"${line(0)}\t${line(1)}\t${line(3)}\t${line(3).size}\t${line(4)}\t${line(4).size}\t${line(5)}\t${fam._1}\t'${proGT}\t${if (PLexist) proBand(PL) else -1}\t\t${ances}\t${par}\t${kids}\t${desc}\t${exFamFreq}\t${popFreq}\t${popFreq.toFloat/(animalIDS.size)}\t${proRatio._2/proRatio._1.toFloat}\t${rank}\tSomatic\t" +
-							 proRatio + "\t" + selROvAD(par1,AD, RO, AO, GT) + " " + (if (PLexist) par1(PL) else "0,0,0") + "\t" + selROvAD(par2,AD, RO, AO, GT) + " " + (if (PLexist) par2(PL) else "0,0,0") + s"\t${popRef}\t${popALT}\t\n")
-							out_somatic.write(line.reduceLeft{(a,b) => a + "\t" + b} + "\n")
-						}
-						*/
 
 				}//eisVAR
 			} // IS VAR
@@ -1002,47 +1007,6 @@ tmpPhase = new HashMap[String,List[Tuple3[String,Int,String]]]
 	}// Ewhile
 	in_vcf.close
 	out_vcf.close
-/*	
-	for (child <- childHaps){
-		val childOrigin = child._2.reverse.toArray
-		errors.print(childOrigin.size + "\n")
-		val out = new BufferedWriter(new FileWriter(child._1 + "-origin.bed"))
-		var count = 1
-		var lastPos, lastChr, lastOrig, startPos = "" 
-		while (count < childOrigin.size){
-			val cline = childOrigin(count).split("\t")
-			if (lastChr == ""){
-				lastChr = cline(0)
-				lastPos = cline(1)
-				lastOrig = cline(3)
-				startPos = cline(1)
-				out.write(s"${cline(0)}\t${cline(1)}\t")
-			}
-				if ((cline(3) != lastOrig) || (lastChr != cline(0))){
-					out.write(s"${lastPos}\t${lastOrig}\n")
-					if (phaseBlock.contains(child._1)){
-						phaseBlock(child._1) =  (startPos.toInt,lastPos.toInt,lastChr,lastOrig) :: phaseBlock(child._1)
-					} else {
-						phaseBlock += child._1 -> (startPos.toInt,lastPos.toInt,lastChr,lastOrig) :: Nil
-					}
-					
-					startPos = cline(1)
-					lastPos = cline(1)
-					lastChr = cline(0)
-					lastOrig = cline(3)
-					out.write(s"${cline(0)}\t${cline(1)}\t")
-				} else {
-					lastPos = cline(1)
-				}
-			
-			count += 1
-
-		}
-		out.write(s"${lastPos}\t${lastOrig}\n")
-		out.close
-	}
-	*/
-	//}
 	
 }//eMain
 
