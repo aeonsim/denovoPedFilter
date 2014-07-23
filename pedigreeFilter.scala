@@ -501,7 +501,7 @@ def main (args: Array[String]): Unit = {
 	
 
 	if ((! settings.contains("VCF")) && (! settings.contains("PED")) && (! settings.contains("TRIOS"))  && (! settings.contains("TYPE"))) {
-		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt phase=phase.vcf.gz type=gatk,plat,fb ref=genome.fasta { phaseVCF=SNPChip.vcf.gz minDP=0 minALT=0 RECUR=F/T minKIDS=1 minPL=0 QUAL=0 minRAFQ=0.2 }")
+		println("advFilter VCF=input.vcf.gz PED=input.ped TRIOS=input_probands.txt phase=phase.vcf.gz type=gatk,plat,fb ref=genome.fasta {maxDPx=2.0 phaseVCF=SNPChip.vcf.gz minDP=0 minALT=0 RECUR=F/T minKIDS=1 minPL=0 QUAL=0 minRAFQ=0.2 }")
 		println("Trios = txtfile per line: AnimalID\tavgDepth")
 		println("{} Optional arguments, Values shown are default")
 		System.exit(1)
@@ -521,6 +521,8 @@ def main (args: Array[String]): Unit = {
 	val minRAFreq = if (settings.contains("MINRAFQ")) settings("MINRAFQ").toFloat else 0.2
 	val phaseVCF = if (settings.contains("PHASE")) settings("PHASE") else settings("VCF")
 	val useRef = if (settings.contains("REF")) true else false
+	val gpdb = if (settings.contains("GPDP")) true else false
+	val maxDPmulti = if (settings.contains("MAXDPX")) settings("MAXDPX").toDouble else 2.0
 	//val region = if (settings.contains("REGION")) true else false
 	settings("TYPE").toUpperCase match {
 		case "GATK" => vcfType = "gatk"
@@ -714,7 +716,7 @@ var phaseBlock = new HashMap[String,List[Tuple5[String,Int,Int,String,Int]]]
 		for (fam <- trios.par){
 			/* Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam) */
 			val family = fam._2
-			val maxDP = (family._5 * 1.7).toInt
+			val maxDP = (family._5 * maxDPmulti).toInt
 				val proband = phaseLine(vcfanimals(fam._1)).split(":")
 				val sire = phaseLine(vcfanimals(family._2(0))).split(":")
 				val dam = phaseLine(vcfanimals(family._2(1))).split(":")
@@ -974,6 +976,7 @@ ref.close
 			var allowDam, allowSire = false
 			var sgSire, sgDam, dgSire, dgDam, tDam, tSire, gtgSire, gtgDam, dgSireAD, dgDamAD, sgDamAD, sgSireAD = ""
 			var denovoParent = ""
+			var sgsDetails, sgdDetails, dgsDetails, dgdDetails: Array[String] = Array() 
 			
 			for (parent <- ped._2){
 				var numGPs, gpVars = 0
@@ -1189,7 +1192,8 @@ ref.close
 						if (varSirePhase >= 1 && varDamPhase >= 1){
 							phaseQual = "Bad\t" + denovoHap
 						} else {
-						  if ( (varSirePhase != 0 &&  varDamPhase != 0) && ((varSirePhase != 0 && varSirePhase == sirePhase) || (varDamPhase != 0 && varDamPhase == damPhase))){
+						  if ((varSirePhase == kids && sirePhase == kids) || (varDamPhase == kids && damPhase == kids)){
+						  //if ( (varSirePhase != 0 &&  varDamPhase != 0) && ((varSirePhase != 0 && varSirePhase == sirePhase) || (varDamPhase != 0 && varDamPhase == damPhase))){
 								phaseQual = "Good\t" + denovoHap
 							} else {
 								phaseQual = "Partital\t" + denovoHap
@@ -1199,8 +1203,7 @@ ref.close
 						  	  /*		
 						  	   * 	Find GrandParent Phase for 4 Gen
 						  	  */
-						  	  
-						  	  
+		  	  
 						  	  def grandPar(parnt: String, gSire: String, gDam: String): Unit = {
 						  	  	val childID = (fam._1 + "_" + parnt)
 						  	    if (phaseTracking.contains(childID)) phaseTracking(childID).getPhase(line(0),line(1).toInt) match{
@@ -1254,12 +1257,19 @@ ref.close
 									    val tmp = if (allowSire){
 									    val sgsPL = extctPL(line(vcfanimals(pedFile(ped._2(0))(2))))
 									    val sgdPL = extctPL(line(vcfanimals(pedFile(ped._2(0))(3))))
-									    denovoPostProb4gen(proPL, sirePL, damPL, sgsPL, sgdPL, arrayNull, arrayNull, ped3_5sire)
-									      
+									    val proDenovo = denovoPostProb(proPL, sirePL, damPL)
+									    val sireDenovo = denovoPostProb(sirePL, sgsPL, sgdPL)
+									    val mostLikelyDenovo = Array(proDenovo,sireDenovo).sortBy(_._2).apply(1)
+									    val tmpError =  denovoPostProb4gen(proPL, sirePL, damPL, sgsPL, sgdPL, arrayNull, arrayNull, ped3_5sire)._3
+									    posteriorProbs = s"${mostLikelyDenovo._2}\t${mostLikelyDenovo._1.toFloat} ${mostLikelyDenovo._2.toFloat} ${tmpError.toFloat}"  
 									    } else {
 									    val dgsPL = extctPL(line(vcfanimals(pedFile(ped._2(1))(2))))
 									    val dgdPL = extctPL(line(vcfanimals(pedFile(ped._2(1))(3))))
-									    denovoPostProb4gen(proPL, sirePL, damPL, arrayNull, arrayNull, dgsPL, dgdPL, ped3_5dam)
+									    val proDenovo = denovoPostProb(proPL, sirePL, damPL)
+									    val damDenovo = denovoPostProb(damPL, dgsPL, dgdPL)
+									    val mostLikelyDenovo = Array(proDenovo,damDenovo).sortBy(_._2).apply(1)
+									    val tmpError = denovoPostProb4gen(proPL, sirePL, damPL, arrayNull, arrayNull, dgsPL, dgdPL, ped3_5dam)._3
+									    posteriorProbs = s"${mostLikelyDenovo._2}\t${mostLikelyDenovo._1.toFloat} ${mostLikelyDenovo._2.toFloat} ${tmpError.toFloat}"
 									    }
 									    
 									  }else {
