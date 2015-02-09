@@ -295,7 +295,7 @@ def denovoPostProb(proPL: Array[Double], sirePL: Array[Double], damPL: Array[Dou
 			val RefAlt = indv(ADval).split(",")
 			//val GTlist = rtGTs(indv(GTval)).map(_.toInt).sorted
 			//(RefAlt(GTlist(0)).toInt,RefAlt(GTlist(1)).toInt)
-			(RefAlt(0).toInt,RefAlt(1).toInt)
+			if (RefAlt.size >= 2) (RefAlt(0).toInt,RefAlt(1).toInt) else (0,0)
 		} else {
 		if (PLexist){
 			//Check other Genotypes are atleast Phred 10 unlikely
@@ -360,21 +360,25 @@ def denovoPostProb(proPL: Array[Double], sirePL: Array[Double], damPL: Array[Dou
 	}
 
 
+	def getQUAL(input: String) : Double ={
+	  try {
+	    input.toDouble
+	  } catch {
+	    case e: Exception => System.err.println(e + " " + input)
+	    0.0
+	  }
+	}
+	
 
 /* Take a Genotype String and check against DP limits*/
 
 	def checkDP (genos: Array[String], DPpos: Int, minDP: Int, maxDP: Int): Boolean = {
-		//try{
 		if (DPpos != -1 && genos.size > DPpos  && genos(DPpos) != "."){
 			val curDP = if (vcfType == "platypus") genos(DPpos).split(",")(0).toInt else genos(DPpos).toInt
 			if (curDP >= minDP && curDP <= maxDP) true else false
 		} else {
 			false
 		}
-		//} catch {
-		//	 case e: Exception => System.err.println(e + " DPpos " + DPpos + " Geno " + genos.reduceLeft{(a,b) => a + ":" + b})
-		//	 false
-		//}
 	}
 	
 	/* Check PL is sufficient, if no PL's then aways ok*/
@@ -388,20 +392,29 @@ def denovoPostProb(proPL: Array[Double], sirePL: Array[Double], damPL: Array[Dou
 		}	
 	}
 	
+def getPLs(info: Array[String]): Array[Double] = {
+  if (PL == -1) Array(100.0,0.0,100.0) 
+  else {try{
+		  info(PL).split(",").map(num => scala.math.abs(num.toDouble))
+		} catch {
+		  case e: Exception => System.err.println("Error PL's for " + info)
+		  Array(0.0,0.0,0.0)
+		}
+  }
+}
 	
 	
 /* Phase Code, return format is (sireAllele,damAllele)*/
 
 def phase(indv: Array[String], sire: Array[String], dam: Array[String]) : Tuple2[String, String] = {
-  if (indv.size >= PL && sire.size >= PL && dam.size >= PL){
-	val minPLval = if (vcfType == "gatk") 75 else 7
+  //if (indv.size >= PL && sire.size >= PL && dam.size >= PL){
+	val minPLval = if (vcfType == "gatk") 60 else 6
 	val indvGT = indv(0)
 	val sireGT = sire(0)
 	val damGT  = dam(0)
-	val snpChip: Array[Double] = Array(100.0,100.0)
-	val indvPL: Array[Double] = if (PL == -1) snpChip else getPLs(indv).sorted.tail
-	val sirePL: Array[Double] = if (PL == -1) snpChip else getPLs(sire).sorted.tail
-	val damPL: Array[Double]  = if (PL == -1) snpChip else getPLs(dam).sorted.tail
+	val indvPL: Array[Double] = getPLs(indv).sorted.tail
+	val sirePL: Array[Double] = getPLs(sire).sorted.tail
+	val damPL: Array[Double]  = getPLs(dam).sorted.tail
 if ((indvPL(0) >= minPLval && sirePL(0) >= minPLval && damPL(0) >= minPLval)){
 	if(sireGT == "0/0" && damGT == "1/1" && (indvGT == "0/1" || indvGT == "1/0")){
 		("0","1")
@@ -430,8 +443,8 @@ if ((indvPL(0) >= minPLval && sirePL(0) >= minPLval && damPL(0) >= minPLval)){
 	
 			}
 		} else ("x","x")
-  }
-  else  ("x","x")
+ // }
+  //else  ("x","x")
 
 }
 
@@ -441,7 +454,7 @@ def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 	if (child.size >= PL){
 	val childGT = child(0)
 	val minPLval = if (vcfType == "gatk") 70 else 7
-	val childPL: Array[Double] = if (PL == -1) Array(100.00,100.00) else getPLs(child)
+	val childPL: Array[Double] = getPLs(child)
 	if ((curPhase._1 != "x") && (childPL(1) >= minPLval) && (childGT == "1/1" || childGT == "0/0")){
 		if (curPhase._1 == childGT(0).toString || curPhase._1 == childGT(2).toString) "S" else "D"
 		} else {
@@ -451,14 +464,6 @@ def childPhase(curPhase: Tuple2[String,String], child: Array[String]): String ={
 
 }
 
-def getPLs(info: Array[String]): Array[Double] = {
-		try{
-		  info(PL).split(",").map(num => scala.math.abs(num.toDouble))
-		} catch {
-		  case e: Exception => System.err.println("Error PL's for " + info)
-		  Array(0.0,0.0,0.0)
-		}
-}
 
 def findRecomb() : Unit = {
   
@@ -725,7 +730,7 @@ var phaseBlock = new HashMap[String,List[Tuple5[String,Int,Int,String,Int]]]
 		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
 		
 		
-	  	if (phaseLine(3).size == 1 && phaseLine(4).size == 1 && phaseLine(5).toDouble > 100){
+	  	if (phaseLine(3).size == 1 && phaseLine(4).size == 1 && getQUAL(phaseLine(5)) > 100.0 && phaseLine.size >= vcfanimals.size){
 		for (fam <- trios.par){
 			/* Family = (ancestors, parents, children, tmpdesc, curPro(1).toInt, population, extFam) */
 			val family = fam._2
@@ -934,9 +939,11 @@ ref.close
 		RO = if (format.contains("NV")) format.indexOf("NR") else format.indexOf("RO")
 				
 		/*To be considered the VCF record must be ok, the Qual score >= Min & no more than 3 alternative alleles*/
-		if (line.size == (vcfanimals.size + 9) && (line(5).toFloat >= QUAL) && (line(4).split(",").size < 3)){
+		if (line.size == (vcfanimals.size + 9) && (getQUAL(line(5)) >= QUAL) && (line(4).split(",").size < 3)){
 			var trioPos = 0
 			val triosArray = trios.keys.toArray
+			
+			//for (dat <- otherTrios) trios += dat._1 -> dat._2
 			
 			for (fam <- trios.toArray.par){
 				var indv = ""
@@ -1104,6 +1111,8 @@ ref.close
 							val refAlt = selROvAD(curAn,AD, RO, AO, GT)
 							if (isVar(curAn(GT)) || sigAD(refAlt._2)){
 								desc += 1
+								kidRefs += refAlt._1
+								kidAlts += refAlt._2
 							}
 						}
 					}
@@ -1277,9 +1286,9 @@ ref.close
 
 							var posteriorProbs = "No PL/GL"
 							  if (PLexist){
-							    val proPL = proBand(PL).split(",").map(_.toDouble)
-							    val sirePL = sDetails(PL).split(",").map(_.toDouble)
-							    val damPL = dDetails(PL).split(",").map(_.toDouble)
+							    val proPL = getPLs(proBand)
+							    val sirePL = getPLs(sDetails)
+							    val damPL = getPLs(dDetails)
 								  if (ped._1.size == 4){
 									val sgsPL = extctPL(line(vcfanimals(pedFile(ped._2(0))(2))))
 									val sgdPL = extctPL(line(vcfanimals(pedFile(ped._2(0))(3))))
